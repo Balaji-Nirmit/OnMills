@@ -1,0 +1,38 @@
+[
+  {
+    "name": "Todo",
+    "key": "TODO"
+  },
+  {
+    "name": "Purchase",
+    "key": "PURCHASE"
+  },
+  {
+    "name": "Store",
+    "key": "STORE"
+  },
+  {
+    "name": "Buffing",
+    "key": "BUFFING"
+  },
+  {
+    "name": "Painting",
+    "key": "PAINTING"
+  },
+  {
+    "name": "Winding",
+    "key": "WINDING"
+  },
+  {
+    "name": "Assembly",
+    "key": "ASSEMBLY"
+  },
+  {
+    "name": "Packing",
+    "key": "PACKING"
+  },
+  {
+    "name": "Sales",
+    "key": "SALES"
+  }
+]
