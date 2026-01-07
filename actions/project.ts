@@ -5,8 +5,12 @@ import { ProjectType } from "@/lib/types";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 
-
-export async function createProject(data) {
+type CreateProjectType={
+    name: ProjectType['name'],
+    key:ProjectType['key'],
+    description: ProjectType['description'],
+}
+export async function createProject(data:CreateProjectType) {
     const { userId, orgId } = await auth();
     if (!userId) throw new Error("unauthorized");
     if (!orgId) throw new Error("Organization not selected");

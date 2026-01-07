@@ -25,8 +25,23 @@ import { usePathname, useRouter } from "next/navigation";
 
 import statuses from "@/data/status.json";
 import { deleteIssue, updateIssue } from "@/actions/issues";
+import { IssueType,  UserType } from "@/lib/types";
 
 const priorityOptions = ["LOW", "MEDIUM", "HIGH", "URGENT"];
+
+type IssueWithUser = IssueType & {
+    assignee:UserType | null,
+    reporter:UserType,
+}
+
+type Props={
+    isOpen: boolean;
+    onClose: () => void;
+    issue: IssueWithUser;
+    onDelete?: () => void;
+    onUpdate?: (updated: IssueType) => void;
+    borderCol?: string;
+}
 
 export default function IssueDetailsDialog({
     isOpen,
@@ -35,7 +50,7 @@ export default function IssueDetailsDialog({
     onDelete = () => { },
     onUpdate = () => { },
     borderCol = "",
-}) {
+}:Props) {
     const [status, setStatus] = useState(issue.status);
     const [priority, setPriority] = useState(issue.priority);
     const { user } = useUser();
@@ -63,12 +78,12 @@ export default function IssueDetailsDialog({
         }
     };
 
-    const handleStatusChange = async (newStatus) => {
+    const handleStatusChange = async (newStatus: IssueType['status']) => {
         setStatus(newStatus);
         updateIssueFn(issue.id, { status: newStatus, priority });
     };
 
-    const handlePriorityChange = async (newPriority) => {
+    const handlePriorityChange = async (newPriority: IssueType['priority']) => {
         setPriority(newPriority);
         updateIssueFn(issue.id, { status, priority: newPriority });
     };
@@ -83,7 +98,7 @@ export default function IssueDetailsDialog({
         }
     }, [deleted, updated, deleteLoading, updateLoading]);
 
-    const canChange = membership.role === "org:admin"
+    const canChange = membership?.role === "org:admin"
         // user.id === issue.reporter.clerkUserId || membership.role === "org:admin";
 
     const handleGoToProject = () => {

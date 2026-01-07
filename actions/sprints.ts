@@ -5,7 +5,12 @@ import { ProjectType, SprintType } from "@/lib/types";
 import { auth } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 
-export async function createSprint(projectId:ProjectType['id'], data) {
+type CreateSprintDataProp={
+    name: SprintType['name'],
+    startDate: SprintType['startDate'],
+    endDate: SprintType['endDate']
+}
+export async function createSprint(projectId:ProjectType['id'], data:CreateSprintDataProp) {
     const { userId, orgId } = await auth();
 
     if (!userId || !orgId) {
@@ -30,7 +35,7 @@ export async function createSprint(projectId:ProjectType['id'], data) {
     return sprint;
 }
 
-export async function updateSprintStatus(sprintId:SprintType['id'], newStatus) {
+export async function updateSprintStatus(sprintId:SprintType['id'], newStatus:SprintType['status']) {
     const { userId, orgId, orgRole } = await auth();
 
     if (!userId || !orgId) {
@@ -38,15 +43,20 @@ export async function updateSprintStatus(sprintId:SprintType['id'], newStatus) {
     }
 
     try {
-        const sprint = await db.select().from(sprintTable).where(eq(sprintTable.id, sprintId)).then(res => res[0]);
+        const sprint = await db.query.sprintTable.findFirst({
+            where:eq(sprintTable.id,sprintId),
+            with:{
+                project:true
+            }
+        })
 
         if (!sprint) {
             throw new Error("Sprint not found");
         }
 
-        //   if (sprint.project.organizationId !== orgId) {
-        //     throw new Error("Unauthorized");
-        //   }
+          if (sprint.project.organizationId !== orgId) {
+            throw new Error("Unauthorized");
+          }
 
         if (orgRole !== "org:admin") {
             throw new Error("Only Admin can make this change");
@@ -67,6 +77,6 @@ export async function updateSprintStatus(sprintId:SprintType['id'], newStatus) {
 
         return { success: true, sprint: updatedSprint };
     } catch (error) {
-        throw new Error(error.message);
+        throw new Error("Error updating sprint status");
     }
 }

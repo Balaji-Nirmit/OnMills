@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { MotionDiv, MotionH1, fadeInUp, scaleIn } from '@/components/framer-wrappers';
 import { SignedIn, SignedOut, SignInButton } from '@clerk/nextjs';
+import Link from 'next/link';
 
 export default function Home() {
   return (
@@ -74,14 +75,14 @@ export default function Home() {
                 <SignedOut>
                   <SignInButton forceRedirectUrl="/onboarding">
                     <button className="group bg-[#1D1D1F] text-white px-10 py-5 rounded-3xl font-bold text-lg hover:bg-black transition-all flex items-center gap-3 shadow-2xl shadow-black/20 w-full sm:w-auto cursor-pointer">
-                      Setup Board <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                      Get Started Here <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                     </button>
                   </SignInButton>
                 </SignedOut>
                 <SignedIn>
-                  <button className="group bg-[#1D1D1F] text-white px-10 py-5 rounded-3xl font-bold text-lg hover:bg-black transition-all flex items-center gap-3 shadow-2xl shadow-black/20 w-full sm:w-auto cursor-pointer">
+                  <Link href="/onboarding" className="group bg-[#1D1D1F] text-white px-10 py-5 rounded-3xl font-bold text-lg hover:bg-black transition-all flex items-center gap-3 shadow-2xl shadow-black/20 w-full sm:w-auto cursor-pointer">
                     Access Board <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                  </button>
+                  </Link>
                 </SignedIn>
                 <div className="flex items-center gap-3 bg-white/40 p-2 pr-6 rounded-2xl border border-white/60">
                   <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">

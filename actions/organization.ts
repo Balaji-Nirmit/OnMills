@@ -123,7 +123,6 @@ export async function getUserIssues(userId:UserType['id']) {
       desc(issues.updatedAt)
     ]
   })
-  console.log(issuesData);
 
   return issuesData;
 }

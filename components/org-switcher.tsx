@@ -20,7 +20,7 @@ const OrgSwitcher = () => {
       <SignedIn>
         <OrganizationSwitcher
           hidePersonal
-          createOrganizationMode={pathname === "/onboarding" ? "navigation" : "modal"}
+          createOrganizationMode="navigation"
           afterCreateOrganizationUrl="/organization/:slug"
           afterSelectOrganizationUrl="/organization/:slug"
           createOrganizationUrl="/onboarding"

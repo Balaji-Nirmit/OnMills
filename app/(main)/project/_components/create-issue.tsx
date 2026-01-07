@@ -29,7 +29,7 @@ type Props={
   isOpen:boolean,
   onClose:()=>void,
   sprintId:SprintType['id'],
-  status:IssueType['status'] | null,
+  status:IssueType['status'],
   projectId:ProjectType['id'],
   onIssueCreated:()=>void,
   orgId:ProjectType['organizationId']

@@ -5,7 +5,16 @@ import { IssueType, ProjectType, SprintType } from "@/lib/types";
 import { auth } from "@clerk/nextjs/server";
 import { and, asc, desc, eq } from "drizzle-orm";
 
-export async function createIssue(projectId:ProjectType['id'], data) {
+type CreateIssueDataProp={
+    title: IssueType['title'],
+    assigneeId: IssueType['assigneeId'] | null,
+    priority: IssueType['priority'],
+    description?: IssueType['description'],
+    status: IssueType['status'],
+    sprintId: SprintType['id'],
+}
+
+export async function createIssue(projectId:ProjectType['id'], data:CreateIssueDataProp) {
     const { userId, orgId } = await auth();
 
     if (!userId || !orgId) {
@@ -69,9 +78,6 @@ export async function getIssuesForSprint(sprintId:SprintType['id']) {
         }
     })
 
-
-    console.log(issuesdata);
-
     return issuesdata;
 }
 
@@ -116,7 +122,7 @@ export async function deleteIssue(issueId:IssueType['id']) {
 }
 
 
-export async function updateIssue(issueId:IssueType['id'], data) {
+export async function updateIssue(issueId:IssueType['id'], data:{status:IssueType['status'], priority:IssueType['priority']}) {
     const { userId, orgId } = await auth();
 
     if (!userId || !orgId) {
@@ -158,11 +164,11 @@ export async function updateIssue(issueId:IssueType['id'], data) {
 
         return updatedIssue;
     } catch (error) {
-        throw new Error("Error updating issue: " + error.message);
+        throw new Error("Error updating issue");
     }
 }
 
-export async function updateIssueOrder(updatedIssues) {
+export async function updateIssueOrder(updatedIssues:{status:IssueType['status'],order:IssueType['order'], id:IssueType['id']}[]) {
     const { userId, orgId } = await auth();
 
     if (!userId || !orgId) {

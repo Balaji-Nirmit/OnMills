@@ -12,7 +12,6 @@ export const checkUser = async () => {
 
   try {
     const loggedInUser = await db.select().from(userTable).where(eq(userTable.clerkId, user.id))
-    console.log(loggedInUser);
 
     if (loggedInUser.length > 0) {
       return loggedInUser;
@@ -29,6 +28,5 @@ export const checkUser = async () => {
 
     return newUser;
   } catch (error) {
-    console.log(error);
   }
 };

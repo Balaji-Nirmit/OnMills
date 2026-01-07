@@ -71,11 +71,11 @@ const Project = async ({ params }:Props) => {
           
           <div className="bg-white border border-[#F2F0EB] rounded-[40px] p-2 shadow-2xl shadow-black/2">
              <div className="bg-[#FAF9F6]/30 rounded-[36px] overflow-hidden">
-                <SprintBoard
+                {project.sprints.length>0 && <SprintBoard
                   sprints={project.sprints}
                   projectId={projectId}
                   orgId={project.organizationId}
-                />
+                />}
              </div>
           </div>
         </section>
