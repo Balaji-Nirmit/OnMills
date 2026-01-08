@@ -94,7 +94,7 @@ export default function SprintManager({
                 <SelectValue placeholder="Select Sprint" />
               </div>
             </SelectTrigger>
-            <SelectContent className="rounded-3xl border border-white/30 bg-white/40 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] p-1.5 overflow-hidden max-h-[400px]">
+            <SelectContent className="rounded-3xl border border-white/30 bg-white/40 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] p-1.5 overflow-hidden max-h-100">
               {sprints.map((s) => {
                 // Logic for Status-specific styling
                 const statusConfig = {
@@ -124,7 +124,7 @@ export default function SprintManager({
                   <SelectItem
                     key={s.id}
                     value={s.id}
-                    className="group relative rounded-2xl py-3 px-4 mb-1 transition-all duration-200 ease-out hover:bg-white/50 data-[selected]:bg-white/60 focus:bg-white/60 outline-none cursor-pointer border border-transparent hover:border-white/20"
+                    className="group relative rounded-2xl py-3 px-4 mb-1 transition-all duration-200 ease-out hover:bg-white/50 data-selected:bg-white/60 focus:bg-white/60 outline-none cursor-pointer border border-transparent hover:border-white/20"
                   >
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex flex-col gap-1">
@@ -138,7 +138,7 @@ export default function SprintManager({
                           <span className="opacity-90">
                             {format(new Date(s.startDate), "MMM d")}
                           </span>
-                          <span className="w-1.5 h-[1px] bg-[#86868B]/30" />
+                          <span className="w-1.5 h-px bg-[#86868B]/30" />
                           <span className="opacity-90">
                             {format(new Date(s.endDate), "MMM d, yyyy")}
                           </span>
@@ -158,7 +158,7 @@ export default function SprintManager({
 
                     {/* Hover Geometry: Subtle amber bottom highlight */}
                     {s.status === 'ACTIVE' && (
-                      <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1/2 h-[2px] bg-gradient-to-r from-transparent via-[#FF7A5C]/40 to-transparent blur-[1px] opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1/2 h-0.5 bg-linear-to-r from-transparent via-[#FF7A5C]/40 to-transparent blur-[1px] opacity-0 group-hover:opacity-100 transition-opacity" />
                     )}
                   </SelectItem>
                 );
