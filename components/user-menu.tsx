@@ -16,7 +16,7 @@ const UserMenu = () => {
         <UserButton.Link
           label="My Organizations"
           labelIcon={<ChartNoAxesGantt size={15} />}
-          href="/onboarding"
+          href="/onboarding?justCreate=true"
         />
         <UserButton.Action label="manageAccount" />
       </UserButton.MenuItems>

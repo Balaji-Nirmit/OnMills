@@ -3,11 +3,12 @@
 import { SignUp } from "@clerk/nextjs";
 import { Factory, Boxes, Zap, Activity } from "lucide-react";
 import { MotionDiv, fadeInUp } from "@/components/framer-wrappers";
+import Image from "next/image";
 
 const SignUpPage = () => {
   return (
     <main className="min-h-screen w-full bg-[#FFF9F6] flex items-center justify-center relative overflow-hidden p-6">
-      
+
       {/* Background Ambience Sync */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[-15%] left-[-10%] w-[60vw] h-[60vw] bg-linear-to-br from-[#FFDED2] to-transparent rounded-full blur-[140px] opacity-40" />
@@ -15,18 +16,17 @@ const SignUpPage = () => {
       </div>
 
       <div className="relative z-10 w-full max-w-300 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-        
+
         {/* Left Side: Onboarding Context */}
-        <MotionDiv 
+        <MotionDiv
           initial={fadeInUp.initial}
           animate={fadeInUp.animate}
           className="hidden lg:flex flex-col space-y-10"
         >
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-[#1D1D1F] rounded-2xl flex items-center justify-center shadow-xl">
-              <Factory className="text-white w-6 h-6" />
-            </div>
-            <span className="text-2xl font-black uppercase italic tracking-tighter text-[#1D1D1F]">OnMills</span>
+            <Image src={'/logo.png'} width={144} alt="OnMills"
+              height={20}
+              style={{ height: 'auto' }} />
           </div>
 
           <div className="space-y-4">
@@ -61,17 +61,17 @@ const SignUpPage = () => {
         </MotionDiv>
 
         {/* Right Side: SignUp Form */}
-        <MotionDiv 
+        <MotionDiv
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, delay: 0.2 }}
           className="flex justify-center lg:justify-end"
         >
           <div className="relative">
-             {/* Subtle Industrial Grid Background Pattern for the form area */}
-             <div className="absolute -inset-10 opacity-5 pointer-events-none bg-[radial-gradient(#000_1px,transparent_1px)] bg-size-[20px_20px]" />
-             
-             <SignUp 
+            {/* Subtle Industrial Grid Background Pattern for the form area */}
+            <div className="absolute -inset-10 opacity-5 pointer-events-none bg-[radial-gradient(#000_1px,transparent_1px)] bg-size-[20px_20px]" />
+
+            <SignUp
               appearance={{
                 elements: {
                   rootBox: "mx-auto shadow-2xl rounded-[1.5rem] overflow-hidden border border-white/50",
