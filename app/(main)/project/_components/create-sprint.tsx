@@ -14,6 +14,7 @@ import { sprintSchema } from "@/app/lib/validators";
 import useFetch from "@/hooks/use-fetch";
 import { createSprint } from "@/actions/sprints";
 import { ProjectType } from "@/lib/types";
+import "react-day-picker/style.css";
 
 type Props = {
     projectTitle: ProjectType['name'],
@@ -143,7 +144,6 @@ export default function CreateSprint({
                             <Input
                                 id="name"
                                 {...register("name")}
-                                readOnly
                                 className="h-12 bg-white border-[#F2F0EB] rounded-xl font-mono text-[13px] font-bold text-[#1D1D1F] focus-visible:ring-1 focus-visible:ring-[#FF7A5C]/30"
                             />
                         </div>
@@ -174,6 +174,14 @@ export default function CreateSprint({
                                         </PopoverTrigger>
                                         <PopoverContent className="...">
                                             <DayPicker
+                                            classNames={{
+                                                chevron: "fill-black",
+                                                range_start: "bg-[#ff7a5c] p-2 rounded-full",
+                                                range_end: "bg-[#ff7a5c] p-2 rounded-full",
+                                                range_middle: "bg-[#ff7a5c]/15 p-2 rounded-full",
+                                                day_button: "border-none",
+                                                today: "text-black",
+                                              }}
                                                 mode="range"
                                                 disabled={[{ before: new Date() }]}
                                                 selected={dateRange}

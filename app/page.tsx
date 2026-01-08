@@ -9,6 +9,7 @@ import {
 import { MotionDiv, MotionH1, fadeInUp, scaleIn } from '@/components/framer-wrappers';
 import { SignedIn, SignedOut, SignInButton } from '@clerk/nextjs';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function Home() {
   return (
@@ -23,10 +24,9 @@ export default function Home() {
 
         <nav className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-12">
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 bg-[#1D1D1F] rounded-2xl flex items-center justify-center shadow-xl shadow-black/10">
-              <Factory className="w-4.5 h-4.5 text-white" />
-            </div>
-            <span className="text-xl font-bold tracking-tight italic">OnMills</span>
+            <Image src={'/logo.png'} width={144} alt="OnMills"
+              height={20}
+              style={{ height: 'auto' }} />
           </div>
 
           <div className="flex items-center gap-1 bg-white/40 backdrop-blur-2xl border border-white/50 px-2 py-1.5 rounded-full shadow-sm">

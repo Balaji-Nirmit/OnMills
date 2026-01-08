@@ -25,15 +25,18 @@ import { getOrganizationUsers } from "@/actions/organization";
 import { issueSchema } from "@/app/lib/validators";
 import { X } from "lucide-react";
 import { IssueType, ProjectType, SprintType } from "@/lib/types";
-type Props={
-  isOpen:boolean,
-  onClose:()=>void,
-  sprintId:SprintType['id'],
-  status:IssueType['status'],
-  projectId:ProjectType['id'],
-  onIssueCreated:()=>void,
-  orgId:ProjectType['organizationId']
-}
+import { useRouter } from "next/navigation";
+
+type Props = {
+  isOpen: boolean;
+  onClose: () => void;
+  sprintId: SprintType["id"] | null;
+  status: IssueType["status"] | null;
+  projectId: ProjectType["id"];
+  onIssueCreated: () => void;
+  orgId: ProjectType["organizationId"];
+};
+
 export default function IssueCreationDrawer({
   isOpen,
   onClose,
@@ -42,12 +45,15 @@ export default function IssueCreationDrawer({
   projectId,
   onIssueCreated,
   orgId,
-}:Props) {
+}: Props) {
+  const router = useRouter();
+
   const {
     loading: createIssueLoading,
     fn: createIssueFn,
     data: newIssue,
-  } = useFetch(createIssue);
+    setData: setNewIssue,
+  } = useFetch<IssueType, [string, any]>(createIssue);
 
   const {
     fn: fetchUsers,
@@ -61,7 +67,12 @@ export default function IssueCreationDrawer({
     reset,
   } = useForm({
     resolver: zodResolver(issueSchema),
-    defaultValues: { priority: "MEDIUM", description: "", assigneeId: "" },
+    defaultValues: {
+      title: "",
+      priority: "MEDIUM",
+      description: "",
+      assigneeId: "",
+    },
   });
 
   useEffect(() => {
@@ -76,15 +87,26 @@ export default function IssueCreationDrawer({
   useEffect(() => {
     if (newIssue) {
       reset();
+      setNewIssue(null);
       onClose();
       onIssueCreated();
       unlockScreen();
+      router.refresh();
     }
-  }, [newIssue, onClose, onIssueCreated, reset]);
+  }, [newIssue, onClose, onIssueCreated, reset, setNewIssue, router]);
+
+  const onSubmit = (formData: any) => {
+    createIssueFn(projectId, {
+      ...formData,
+      status: status || "TODO",
+      sprintId: sprintId || null,
+      description: formData.description || null,
+    });
+  };
 
   return (
-    <Drawer 
-      open={isOpen} 
+    <Drawer
+      open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
           onClose();
@@ -92,53 +114,62 @@ export default function IssueCreationDrawer({
         }
       }}
     >
-      <DrawerContent className="bg-white/70 backdrop-blur-[30px] border-none rounded-t-[32px] max-h-[92vh] outline-none">
-        {/* SUBTLE AMBER GLOW LENS */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-1 bg-[#FF7A5C]/40 blur-md pointer-events-none" />
-        
-        <div className="mx-auto w-10 h-1 bg-black/10 rounded-full mt-4" />
-        
-        <DrawerHeader className="px-10 pt-8 pb-4">
+      <DrawerContent className="max-w-2xl mx-auto rounded-t-3xl bg-white dark:bg-gray-900 border-x border-t border-gray-200 dark:border-gray-800 shadow-2xl">
+        {/* Drawer Handle */}
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 w-12 h-1 bg-gray-300 dark:bg-gray-600 rounded-full" />
+
+        <DrawerHeader className="px-8 pt-10 pb-6 border-b border-gray-200 dark:border-gray-800">
           <div className="flex items-center justify-between">
-            <DrawerTitle className="text-[28px] font-semibold tracking-tight text-[#1D1D1F]">
-              New Issue
+            <DrawerTitle className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+              Create New Issue
             </DrawerTitle>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => { onClose(); unlockScreen(); }} 
-              className="rounded-full hover:bg-black/5"
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                onClose();
+                unlockScreen();
+              }}
+              className="rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
             >
-              <X size={18} className="text-[#86868B]" />
+              <X className="h-5 w-5 text-gray-600 dark:text-gray-400" />
             </Button>
           </div>
         </DrawerHeader>
 
-        <form onSubmit={handleSubmit((data) => createIssueFn(projectId, { ...data, status, sprintId }))} className="px-10 py-2 space-y-8 overflow-y-auto">
-          
-          {/* MINIMALIST TITLE FIELD */}
-          <div className="pt-2">
-            <Input 
-              {...register("title")} 
-              placeholder="Issue title"
-              className="h-12 bg-transparent border-none border-b border-black/5 rounded-none px-0 text-[20px] font-medium tracking-tight focus-visible:ring-0 focus-visible:border-[#FF7A5C] transition-all placeholder:text-black/20 shadow-none"
+        <form onSubmit={handleSubmit(onSubmit)} className="px-8 py-6 space-y-8 overflow-y-auto max-h-[70vh]">
+          {/* Title */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Title
+            </label>
+            <Input
+              {...register("title")}
+              placeholder="Enter a clear, descriptive title"
+              className="h-12 text-lg font-medium border-gray-300 dark:border-gray-700 focus:border-indigo-500 focus:ring-indigo-500 rounded-xl"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-8">
-            <div className="space-y-1">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-black/40 ml-0.5">Assignee</p>
+          {/* Assignee & Priority */}
+          <div className="grid grid-cols-2 gap-6">
+            {/* Assignee */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Assignee
+              </label>
               <Controller
                 name="assigneeId"
                 control={control}
                 render={({ field }) => (
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <SelectTrigger className="h-10 bg-black/5 border-none rounded-xl px-4 font-semibold text-[14px] shadow-none">
-                      <SelectValue placeholder="Add someone..." />
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger className="h-11 rounded-xl border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                      <SelectValue placeholder="Select assignee..." />
                     </SelectTrigger>
-                    <SelectContent className="rounded-2xl border-none bg-white/80 backdrop-blur-2xl shadow-xl">
+                    <SelectContent className="rounded-xl border-gray-200 dark:border-gray-700 shadow-lg">
                       {users?.map((user) => (
-                        <SelectItem key={user.id} value={user.id} className="rounded-lg">{user?.name}</SelectItem>
+                        <SelectItem key={user.id} value={user.id}>
+                          <span className="font-medium">{user?.name || "Unnamed User"}</span>
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -146,19 +177,36 @@ export default function IssueCreationDrawer({
               />
             </div>
 
-            <div className="space-y-1">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-black/40 ml-0.5">Priority</p>
+            {/* Priority */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Priority
+              </label>
               <Controller
                 name="priority"
                 control={control}
                 render={({ field }) => (
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <SelectTrigger className="h-10 bg-black/5 border-none rounded-xl px-4 font-semibold text-[14px] shadow-none">
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger className="h-11 rounded-xl border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="rounded-2xl border-none bg-white/80 backdrop-blur-2xl shadow-xl">
-                      {["LOW", "MEDIUM", "HIGH", "URGENT"].map(p => (
-                        <SelectItem key={p} value={p} className="rounded-lg">{p}</SelectItem>
+                    <SelectContent className="rounded-xl border-gray-200 dark:border-gray-700 shadow-lg">
+                      {["LOW", "MEDIUM", "HIGH", "URGENT"].map((p) => (
+                        <SelectItem key={p} value={p}>
+                          <span
+                            className={`font-medium ${
+                              p === "URGENT"
+                                ? "text-red-600 dark:text-red-400"
+                                : p === "HIGH"
+                                ? "text-orange-600"
+                                : p === "MEDIUM"
+                                ? "text-amber-600"
+                                : "text-green-600"
+                            }`}
+                          >
+                            {p}
+                          </span>
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -167,26 +215,39 @@ export default function IssueCreationDrawer({
             </div>
           </div>
 
-          <div className="space-y-2" data-color-mode="light">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-black/40 ml-0.5">Description</p>
-            <div className="rounded-2xl border border-black/5 overflow-hidden">
+          {/* Description */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Description <span className="text-gray-500 font-normal">(Optional)</span>
+            </label>
+            <div className="rounded-xl border border-gray-300 dark:border-gray-700 overflow-hidden shadow-sm">
               <Controller
                 name="description"
                 control={control}
                 render={({ field }) => (
-                  <MDEditor value={field.value} onChange={field.onChange} preview="edit" height={220} className="bg-white/30!" />
+                  <MDEditor
+                    value={field.value}
+                    onChange={field.onChange}
+                    preview="edit"
+                    height={101}
+                    className="border-0 bg-transparent! text-slate-700!"
+                    textareaProps={{
+                      placeholder: "Add a detailed description using Markdown...",
+                    }}
+                  />
                 )}
               />
             </div>
           </div>
 
-          <div className="pt-6 pb-12">
+          {/* Submit Button */}
+          <div className="pt-6 pb-8">
             <Button
               type="submit"
               disabled={createIssueLoading}
-              className="w-full h-14 bg-[#1D1D1F] hover:bg-black text-white rounded-2xl text-[15px] font-bold transition-all active:scale-[0.99] shadow-md shadow-black/10"
+              className="w-full h-12 rounded-xl text-base font-semibold bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white shadow-lg transition-all"
             >
-              {createIssueLoading ? "Creating..." : "Create Issue"}
+              {createIssueLoading ? "Creating Issue..." : "Create Issue"}
             </Button>
           </div>
         </form>

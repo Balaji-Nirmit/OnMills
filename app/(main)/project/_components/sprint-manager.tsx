@@ -14,8 +14,9 @@ import { formatDistanceToNow, isAfter, isBefore, format } from "date-fns";
 import useFetch from "@/hooks/use-fetch";
 import { useRouter } from "next/navigation";
 import { updateSprintStatus } from "@/actions/sprints";
-import { Calendar, Play, Square, Timer, AlertCircle } from "lucide-react";
+import { Calendar, Play, Square, Timer, AlertCircle, CircleDot, CheckCircle2, CalendarDays } from "lucide-react";
 import { SprintType } from "@/lib/types";
+import { Badge } from "@/components/ui/badge";
 
 // 1. Explicitly typed Props for SprintManager
 interface SprintManagerProps {
@@ -61,10 +62,10 @@ export default function SprintManager({
   }, [updatedStatus, loading, setSprint]);
 
   const getStatusDisplay = () => {
-    if (status === "COMPLETED") return { text: "Cycle Concluded", icon: <Square size={12}/>, class: "bg-gray-100 text-gray-500" };
-    if (status === "ACTIVE" && isAfter(now, endDate)) return { text: `Overdue: ${formatDistanceToNow(endDate)}`, icon: <AlertCircle size={12}/>, class: "bg-red-50 text-red-600 border border-red-100" };
-    if (status === "PLANNED" && isBefore(now, startDate)) return { text: `T-Minus ${formatDistanceToNow(startDate)}`, icon: <Timer size={12}/>, class: "bg-[#FFF0EA] text-[#FF7A5C] border border-[#FFD8C7]" };
-    if (status === "ACTIVE") return { text: "Node Live", icon: <Play size={12}/>, class: "bg-green-50 text-green-600 border border-green-100" };
+    if (status === "COMPLETED") return { text: "Cycle Concluded", icon: <Square size={12} />, class: "bg-gray-100 text-gray-500" };
+    if (status === "ACTIVE" && isAfter(now, endDate)) return { text: `Overdue: ${formatDistanceToNow(endDate)}`, icon: <AlertCircle size={12} />, class: "bg-red-50 text-red-600 border border-red-100" };
+    if (status === "PLANNED" && isBefore(now, startDate)) return { text: `T-Minus ${formatDistanceToNow(startDate)}`, icon: <Timer size={12} />, class: "bg-[#FFF0EA] text-[#FF7A5C] border border-[#FFD8C7]" };
+    if (status === "ACTIVE") return { text: "Node Live", icon: <Play size={12} />, class: "bg-green-50 text-green-600 border border-green-100" };
     return null;
   };
 
@@ -82,7 +83,7 @@ export default function SprintManager({
   return (
     <div className="bg-white/40 backdrop-blur-2xl border border-white/20 rounded-[32px] p-6 shadow-sm">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        
+
         {/* 1. SPRINT SELECTOR */}
         <div className="flex flex-col gap-2 w-full md:w-auto">
           <label className="text-[10px] font-black text-[#86868B] uppercase tracking-[0.2em] ml-1">Select Active Batch</label>
@@ -93,15 +94,75 @@ export default function SprintManager({
                 <SelectValue placeholder="Select Sprint" />
               </div>
             </SelectTrigger>
-            <SelectContent className="rounded-2xl border-white/20 bg-white/90 backdrop-blur-xl shadow-2xl p-2">
-              {sprints.map((s) => (
-                <SelectItem key={s.id} value={s.id} className="rounded-xl py-3 font-medium hover:bg-[#FF7A5C]/5">
-                  <div className="flex flex-col">
-                    <span className="font-bold text-[#1D1D1F]">{s.name}</span>
-                    <span className="text-[11px] text-[#86868B]">{format(new Date(s.startDate), "MMM d")} - {format(new Date(s.endDate), "MMM d, yyyy")}</span>
-                  </div>
-                </SelectItem>
-              ))}
+            <SelectContent className="rounded-3xl border border-white/30 bg-white/40 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] p-1.5 overflow-hidden max-h-[400px]">
+              {sprints.map((s) => {
+                // Logic for Status-specific styling
+                const statusConfig = {
+                  ACTIVE: {
+                    bg: "bg-[#FF7A5C]/20",
+                    text: "text-[#FF7A5C]",
+                    icon: <CircleDot className="w-3 h-3 animate-pulse" />,
+                    glow: "shadow-[0_0_12px_rgba(255,122,92,0.3)]",
+                  },
+                  COMPLETED: {
+                    bg: "bg-emerald-500/10",
+                    text: "text-emerald-600/80",
+                    icon: <CheckCircle2 className="w-3 h-3" />,
+                    glow: "",
+                  },
+                  PLANNED: {
+                    bg: "bg-blue-500/10",
+                    text: "text-blue-600/80",
+                    icon: <CalendarDays className="w-3 h-3" />,
+                    glow: "",
+                  },
+                };
+
+                const currentStatus = statusConfig[s.status];
+
+                return (
+                  <SelectItem
+                    key={s.id}
+                    value={s.id}
+                    className="group relative rounded-2xl py-3 px-4 mb-1 transition-all duration-200 ease-out hover:bg-white/50 data-[selected]:bg-white/60 focus:bg-white/60 outline-none cursor-pointer border border-transparent hover:border-white/20"
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex flex-col gap-1">
+                        {/* Sprint Name */}
+                        <span className="text-[14px] font-bold text-[#1D1D1F] tracking-tight group-hover:translate-x-0.5 transition-transform duration-200">
+                          {s.name}
+                        </span>
+
+                        {/* Date Range with Apple-style secondary text */}
+                        <div className="flex items-center gap-2 text-[11px] font-medium text-[#86868B]">
+                          <span className="opacity-90">
+                            {format(new Date(s.startDate), "MMM d")}
+                          </span>
+                          <span className="w-1.5 h-[1px] bg-[#86868B]/30" />
+                          <span className="opacity-90">
+                            {format(new Date(s.endDate), "MMM d, yyyy")}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Vision-Pro Inspired Status Badge */}
+                      <Badge className={`
+            flex items-center gap-1.5 px-2.5 py-1 rounded-full border-none text-[10px] font-bold tracking-wide uppercase
+            ${currentStatus.bg} ${currentStatus.text} ${currentStatus.glow}
+            transition-all duration-300
+          `}>
+                        {currentStatus.icon}
+                        {s.status}
+                      </Badge>
+                    </div>
+
+                    {/* Hover Geometry: Subtle amber bottom highlight */}
+                    {s.status === 'ACTIVE' && (
+                      <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1/2 h-[2px] bg-gradient-to-r from-transparent via-[#FF7A5C]/40 to-transparent blur-[1px] opacity-0 group-hover:opacity-100 transition-opacity" />
+                    )}
+                  </SelectItem>
+                );
+              })}
             </SelectContent>
           </Select>
         </div>

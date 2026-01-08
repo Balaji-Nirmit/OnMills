@@ -25,19 +25,15 @@ import { usePathname, useRouter } from "next/navigation";
 
 import statuses from "@/data/status.json";
 import { deleteIssue, updateIssue } from "@/actions/issues";
-import { IssueType,  UserType } from "@/lib/types";
+import { IssueType, UserType } from "@/lib/types";
+import { DetailedIssue } from "@/app/(main)/project/_components/sprint-board";
 
 const priorityOptions = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 
-type IssueWithUser = IssueType & {
-    assignee:UserType | null,
-    reporter:UserType,
-}
-
-type Props={
+type Props = {
     isOpen: boolean;
     onClose: () => void;
-    issue: IssueWithUser;
+    issue: DetailedIssue;
     onDelete?: () => void;
     onUpdate?: (updated: IssueType) => void;
     borderCol?: string;
@@ -50,7 +46,7 @@ export default function IssueDetailsDialog({
     onDelete = () => { },
     onUpdate = () => { },
     borderCol = "",
-}:Props) {
+}: Props) {
     const [status, setStatus] = useState(issue.status);
     const [priority, setPriority] = useState(issue.priority);
     const { user } = useUser();
@@ -99,7 +95,7 @@ export default function IssueDetailsDialog({
     }, [deleted, updated, deleteLoading, updateLoading]);
 
     const canChange = membership?.role === "org:admin"
-        // user.id === issue.reporter.clerkUserId || membership.role === "org:admin";
+    // user.id === issue.reporter.clerkUserId || membership.role === "org:admin";
 
     const handleGoToProject = () => {
         router.push(`/project/${issue.projectId}?sprint=${issue.sprintId}`);
@@ -128,43 +124,62 @@ export default function IssueDetailsDialog({
                 {(updateLoading || deleteLoading) && (
                     <BarLoader width={"100%"} color="#36d7b7" />
                 )}
-                <div className="space-y-4">
-                    <div className="flex items-center space-x-2">
-                        <Select value={status} onValueChange={handleStatusChange}>
-                            <SelectTrigger className="">
-                                <SelectValue placeholder="Status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {statuses.map((option) => (
-                                    <SelectItem key={option.key} value={option.key}>
-                                        {option.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <Select
-                            value={priority}
-                            onValueChange={handlePriorityChange}
-                            disabled={!canChange}
-                        >
-                            <SelectTrigger className={`border ${borderCol} rounded`}>
-                                <SelectValue placeholder="Priority" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {priorityOptions.map((option) => (
-                                    <SelectItem key={option} value={option}>
-                                        {option}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                {issue.project?.name && (
+                    <p className="text-sm font-medium text-gray-600 mt-2">
+                        Project : {issue.project.name}
+                    </p>
+                )}                <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 block">
+                                Status
+                            </label>
+                            <Select value={status} onValueChange={handleStatusChange}>
+                                <SelectTrigger className="w-full h-11 rounded-lg border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    <SelectValue placeholder="Status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {statuses.map((option) => (
+                                        <SelectItem key={option.key} value={option.key}>
+                                            {option.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 block">
+                                Priority
+                            </label>
+                            <Select
+                                value={priority}
+                                onValueChange={handlePriorityChange}
+                                disabled={!canChange}
+                            >
+                                <SelectTrigger className={`w-full h-11 rounded-lg border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${!canChange ? "opacity-70 cursor-not-allowed" : ""
+                                    }`}>
+                                    <SelectValue placeholder="Priority" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {priorityOptions.map((option) => (
+                                        <SelectItem key={option} value={option}>
+                                            {option}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
                     <div>
-                        <h4 className="font-semibold">Description</h4>
-                        <MDEditor.Markdown
-                            className="rounded px-2 py-1"
-                            source={issue.description ? issue.description : "--"}
-                        />
+                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                            Description
+                        </h4>
+                        <div className="prose prose-sm dark:prose-invert max-w-none bg-gray-50 dark:bg-gray-800/50 rounded-xl p-5 border border-gray-200 dark:border-gray-700">
+                            <MDEditor.Markdown className="bg-transparent! text-slate-700!  max-w-none 
+                     selection:bg-amber-200/50"
+                                source={issue.description || "_No description provided._"}
+                            />
+                        </div>
                     </div>
                     <div className="flex justify-between">
                         <div className="flex flex-col gap-2">

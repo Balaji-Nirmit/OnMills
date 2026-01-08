@@ -31,8 +31,8 @@ const Project = async ({ params }:Props) => {
           {[
             { label: "Total Batches", value: totalSprints, icon: Layers, color: "text-[#FF7A5C]" },
             { label: "Active Nodes", value: activeSprints, icon: Target, color: "text-[#34C759]" },
-            { label: "Lead Time", value: "14d Avg", icon: Clock, color: "text-[#007AFF]" },
-            { label: "Efficiency", value: "94%", icon: BarChart3, color: "text-[#AF52DE]" },
+            // { label: "Lead Time", value: "14d Avg", icon: Clock, color: "text-[#007AFF]" },
+            // { label: "Efficiency", value: "94%", icon: BarChart3, color: "text-[#AF52DE]" },
           ].map((stat, i) => (
             <div key={i} className="bg-white border border-[#F2F0EB] p-5 rounded-[24px] flex items-center gap-4 shadow-sm">
               <div className={`p-3 rounded-2xl bg-[#FAF9F6] ${stat.color}`}>

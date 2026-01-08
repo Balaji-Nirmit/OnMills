@@ -60,7 +60,7 @@ export default async function ProjectList({ orgId }:Props) {
               {project.name}
             </h3>
             <p className="text-[16px] text-[#86868B] leading-relaxed font-medium line-clamp-2 max-w-[90%]">
-              {project.description || "System_log: Operational metadata not yet defined."}
+              {project.description || ""}
             </p>
           </div>
 

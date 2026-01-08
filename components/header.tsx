@@ -1,8 +1,8 @@
 import { SignedIn } from "@clerk/nextjs";
 import UserMenu from "./user-menu";
 import { checkUser } from "@/lib/checkUser";
-import { Search, Bell, Menu, LayoutGrid, Settings2, Zap } from "lucide-react";
 import OrgSwitcher from "./org-switcher";
+import Image from "next/image";
 
 const Header = async () => {
     await checkUser();
@@ -12,13 +12,9 @@ const Header = async () => {
             <div className="max-w-400 mx-auto px-8 h-20 flex items-center justify-between">
                 <div className="flex items-center gap-8">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-[#1D1D1F] rounded-xl flex items-center justify-center shadow-lg shadow-black/10">
-                            <Zap size={20} className="text-[#FF7A5C]" fill="currentColor" />
-                        </div>
-                        <div className="h-6 w-px bg-[#E5E3DD]" />
-                        <div className="flex flex-col">
-                            <span className="text-[10px] font-black text-[#FF7A5C] uppercase tracking-[0.25em] leading-none mb-1">OnMills OS</span>
-                        </div>
+                        <Image src={'/logo.png'} width={144} alt="OnMills"
+                            height={20}
+                            style={{ height: 'auto' }} />
                     </div>
                 </div>
 
