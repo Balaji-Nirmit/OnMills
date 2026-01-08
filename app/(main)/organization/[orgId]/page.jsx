@@ -18,12 +18,25 @@ import { redirect } from 'next/navigation';
 
 const Organization = async ({ params }) => {
     const { orgId } = await params;
-    const organization = await getOrganization(orgId);
     const { userId } = await auth();
-
+    
     if (!userId) {
-        redirect('/sign-in');
+        return (
+            <div className="flex h-screen items-center justify-center bg-[#FAF9F6] p-8">
+                <div className="w-full max-w-md bg-white border border-[#F2F0EB] p-12 rounded-[48px] shadow-2xl shadow-black/2 text-center">
+                    <div className="w-20 h-20 bg-[#FFF0EA] rounded-[28px] flex items-center justify-center mx-auto mb-8 border border-[#FFD8C7]">
+                        <ShieldCheck className="text-[#FF7A5C]" size={40} strokeWidth={1.5} />
+                    </div>
+                    <h1 className="text-[28px] font-bold text-[#1D1D1F] tracking-tighter mb-3">Unauthorized Access</h1>
+                    <p className="text-[#86868B] text-[15px] font-medium leading-relaxed">
+                        This organization node is either inactive or your security clearance does not permit entry.
+                    </p>
+                </div>
+            </div>
+        );
     }
+
+    const organization = await getOrganization(orgId);
 
     if (!organization) {
         return (
