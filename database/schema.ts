@@ -39,10 +39,16 @@ export const sprintTable = pgTable("sprintTable", {
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const itemTable = pgTable("itemTable",{
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    projectId: uuid("project_id").notNull().references(()=> projectTable.id, {onDelete:"cascade"}),
+})
+
 export const issues = pgTable("issues", {
     // FIXED: Changed from text to uuid to match your architecture
     id: uuid("id").primaryKey().defaultRandom(), 
-    title: text("title").notNull(),
+    itemId: uuid("item_id").notNull().references(()=> itemTable.id, {onDelete:"cascade"}),
     description: text("description"),
     status: issueStatusEnum("status").notNull(),
     order: integer("order").notNull(),
@@ -68,11 +74,21 @@ export const userRelations = relations(userTable, ({ many }) => ({
 
 // 2. Project Relations
 export const projectRelations = relations(projectTable, ({ many }) => ({
+    items: many(itemTable),
     sprints: many(sprintTable),
     issues: many(issues),
 }));
 
-// 3. Sprint Relations
+// 3. Item Relations
+export const itemRelations = relations(itemTable,({ one, many})=>({
+    project: one(projectTable,{
+        fields:[itemTable.projectId],
+        references:[projectTable.id],
+    }),
+    issues: many(issues)
+}))
+
+// 4. Sprint Relations
 export const sprintRelations = relations(sprintTable, ({ one, many }) => ({
     project: one(projectTable, {
         fields: [sprintTable.projectId],
@@ -81,8 +97,12 @@ export const sprintRelations = relations(sprintTable, ({ one, many }) => ({
     issues: many(issues),
 }));
 
-// 4. Issue Relations
+// 5. Issue Relations
 export const issueRelations = relations(issues, ({ one }) => ({
+    item: one(itemTable,{
+        fields:[issues.itemId],
+        references:[itemTable.id],
+    }),
     project: one(projectTable, {
         fields: [issues.projectId],
         references: [projectTable.id],
@@ -102,12 +122,3 @@ export const issueRelations = relations(issues, ({ one }) => ({
         relationName: "reporter",
     }),
 }));
-
-// export const ProjectSprintRelation = defineRelations({projectTable, sprintTable},(r)=>({
-//     sprintTable:{
-//         sprintOf:r.one.projectTable({
-//             from:r.sprintTable.projectId,
-//             to:r.projectTable.id,
-//         }),
-//     }
-// }))

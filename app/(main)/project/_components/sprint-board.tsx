@@ -13,15 +13,11 @@ import IssueCard from "@/components/issue-card";
 import { toast } from "sonner";
 import BoardFilters from "./board-filters";
 import { Plus, CircleDot, ChevronRight, RotateCcw, Activity, ArrowRight } from "lucide-react";
-import { IssueType, ProjectType, SprintType, UserType } from "@/lib/types";
+import { DetailedIssue, IssueType, ProjectType, SprintType, UserType } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-export type DetailedIssue = IssueType & {
-    project?: ProjectType;
-    assignee: UserType | null;
-    reporter: UserType;
-};
+
 
 type Props = {
     sprints: SprintType[],
@@ -189,7 +185,7 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
                                     {/* Issue Title */}
                                     <td className="px-8 py-6">
                                         <div className="text-base font-medium text-gray-900 leading-snug">
-                                            {issue.title}
+                                            {issue.item.name}
                                         </div>
                                     </td>
 
@@ -288,7 +284,7 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
                                     <div className="flex items-end justify-between px-4 mb-2">
                                         <div className="space-y-1">
                                             <h2 className="text-2xl font-semibold tracking-tight text-[#1D1D1F]">
-                                                {issue.title}
+                                                {issue.item.name}
                                             </h2>
                                         </div>
                                     </div>

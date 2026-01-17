@@ -26,6 +26,7 @@ import { issueSchema } from "@/app/lib/validators";
 import { X } from "lucide-react";
 import { IssueType, ProjectType, SprintType } from "@/lib/types";
 import { useRouter } from "next/navigation";
+import { getProjectItems } from "@/actions/items";
 
 type Props = {
   isOpen: boolean;
@@ -61,6 +62,11 @@ export default function IssueCreationDrawer({
   } = useFetch(getOrganizationUsers);
 
   const {
+    fn: fetchItems,
+    data: items,
+  } = useFetch(getProjectItems)
+
+  const {
     control,
     register,
     handleSubmit,
@@ -77,7 +83,10 @@ export default function IssueCreationDrawer({
   });
 
   useEffect(() => {
-    if (isOpen && orgId) fetchUsers(orgId);
+    if (isOpen && orgId){
+      fetchUsers(orgId)
+      fetchItems(projectId)
+    };
   }, [isOpen, orgId]);
 
   const unlockScreen = () => {
@@ -142,12 +151,28 @@ export default function IssueCreationDrawer({
           {/* Title */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Title
+              Item name
             </label>
-            <Input
+            {/* <Input
               {...register("title")}
               placeholder="Enter a clear, descriptive title"
               className="h-12 text-lg font-medium border-gray-300 dark:border-gray-700 focus:border-indigo-500 focus:ring-indigo-500 rounded-xl"
+            /> */}
+            <Controller name="title" control={control} 
+            render={({field})=>(
+              <Select onValueChange={field.onChange} value={field.value}>
+                <SelectTrigger className="h-11 rounded-xl border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                  <SelectValue placeholder="select item from catalog..." />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-gray-200 dark:border-gray-700 shadow-lg">
+                  {items?.map((item)=>(
+                    <SelectItem key={item.id} value={item.id}> 
+                      <span className="font-medium">{item?.name || "no item"}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             />
             {errors.title && <p className="text-[#FF7A5C] text-[11px] font-bold mt-1 ml-1 uppercase">{errors.title.message}</p>}
 

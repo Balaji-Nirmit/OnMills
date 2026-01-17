@@ -4,17 +4,12 @@ import IssueCard from "@/components/issue-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Suspense } from "react";
 import { Inbox, Send, LayoutGrid, Loader2 } from "lucide-react";
-import { IssueType, ProjectType, UserType } from "@/lib/types";
+import { DetailedIssue, UserType } from "@/lib/types";
 
 type Props={
     userId: UserType['id']
 }
 
-type IssuesWithProjectAndUser = IssueType & {
-    project: ProjectType;
-    assignee: UserType | null;
-    reporter: UserType;
-}
 const UserIssues = async ({ userId }:Props) => {
     const issuesdata = await getUserIssues(userId);
     
@@ -146,7 +141,7 @@ const UserIssues = async ({ userId }:Props) => {
     );
 }
 
-function IssueGrid({ issues }:{issues: IssuesWithProjectAndUser[]}) {
+function IssueGrid({ issues }:{issues: DetailedIssue[]}) {
     if (issues.length === 0) {
         return (
             <div className="py-12 text-center bg-white border border-[#F2F0EB] rounded-[32px]">

@@ -22,8 +22,12 @@ export const sprintSchema = z.object({
 });
 
 export const issueSchema = z.object({
-  title: z.string().min(1, "Title is required"),
+  title: z.uuid("Please select item"),
   assigneeId: z.uuid("Please select assignee"),
   description: z.string().optional(),
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]),
 });
+
+export const itemSchema = z.object({
+  name: z.string().trim().min(3,"Item title must be at least 3 characters").toUpperCase()
+})

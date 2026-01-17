@@ -117,7 +117,8 @@ export async function getUserIssues(userId:UserType['id']) {
     with:{
       project:true,
       assignee:true,
-      reporter:true
+      reporter:true,
+      item:true
     },
     orderBy:[
       desc(issues.updatedAt)
