@@ -5,6 +5,7 @@ import CreateSprint from "../_components/create-sprint";
 import SprintBoard from "../_components/sprint-board";
 import { BarChart3, Clock, Target, Layers } from "lucide-react";
 import { ProjectType } from "@/lib/types";
+import CreateItem from "../_components/create-item";
 
 type Props={
   params: Promise<{projectId:ProjectType['id']}>
@@ -58,6 +59,11 @@ const Project = async ({ params }:Props) => {
             projectKey={project.key}
             sprintKey={totalSprints + 1}
           />
+        </section>
+
+        {/* NEW SECTION (Item creation) */}
+        <section className="mb-12">
+          <CreateItem projectTitle={project.name} projectId={projectId}/>
         </section>
 
         {/* 3. OPERATIONAL LAYER (The Board) */}

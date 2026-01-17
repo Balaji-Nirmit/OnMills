@@ -4,8 +4,7 @@ import { formatDistanceToNow } from "date-fns";
 import IssueDetailsDialog from "./issue-details-dialog";
 import UserAvatar from "./user-avatar";
 import { useRouter } from "next/navigation";
-import { IssueType } from "@/lib/types";
-import { DetailedIssue } from "@/app/(main)/project/_components/sprint-board";
+import { DetailedIssue, IssueType } from "@/lib/types";
 
 const priorityConfig = {
   LOW: { color: "bg-[#28CD41]", label: "Low", text: "text-[#1D8B2E]", glow: "shadow-[0_0_12px_rgba(40,205,65,0.3)]" },
@@ -35,7 +34,7 @@ export default function IssueCard({ issue, showStatus = false, onDelete = () => 
             <div className={`flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/60 border border-white/80 ${config.glow}`}><div className={`w-1.5 h-1.5 rounded-full ${config.color}`} /><span className={`text-[9px] font-black uppercase tracking-[0.15em] ${config.text}`}>{config.label}</span></div>
             {showStatus && <span className="text-[9px] font-bold text-[#1D1D1F]/40 uppercase tracking-widest bg-black/5 px-2 py-0.5 rounded-md">{issue.status}</span>}
           </div>
-          <h3 className="text-[16px] font-semibold text-[#1D1D1F] tracking-tight">{issue.title}</h3>
+          <h3 className="text-[16px] font-semibold text-[#1D1D1F] tracking-tight">{issue.item.name}</h3>
           <div className="flex items-center justify-between pt-3 border-t border-black/4">
             <UserAvatar user={issue.assignee} />
             <time className="text-[10px] font-medium text-[#86868B]/70 tabular-nums">{formatDistanceToNow(new Date(issue.createdAt), { addSuffix: true })}</time>

@@ -29,9 +29,15 @@ export interface SprintType {
     updatedAt: Date;
 }
 
+export interface ItemType {
+    id: string;
+    name: string;
+    projectId: string;
+}
+
 export interface IssueType {
     id: string;
-    title: string;
+    itemId: string;
     description: string | null;
     status: "TODO" | "PURCHASE" | "STORE" | "BUFFING" | "PAINTING" | "WINDING" | "ASSEMBLY" | "PACKING" | "SALES";
     order:number;
@@ -44,3 +50,10 @@ export interface IssueType {
     updatedAt: Date;
     track: IssueType["status"][];
 }
+
+export type DetailedIssue = IssueType & {
+    project?: ProjectType;
+    assignee: UserType | null;
+    reporter: UserType;
+    item: ItemType;
+};

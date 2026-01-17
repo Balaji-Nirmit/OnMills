@@ -25,8 +25,7 @@ import { usePathname, useRouter } from "next/navigation";
 
 import statuses from "@/data/status.json";
 import { deleteIssue, updateIssue } from "@/actions/issues";
-import { IssueType, UserType } from "@/lib/types";
-import { DetailedIssue } from "@/app/(main)/project/_components/sprint-board";
+import { DetailedIssue, IssueType, UserType } from "@/lib/types";
 import { getOrganizationUsers } from "@/actions/organization";
 
 const priorityOptions = ["LOW", "MEDIUM", "HIGH", "URGENT"];
@@ -127,7 +126,7 @@ export default function IssueDetailsDialog({
             <DialogContent>
                 <DialogHeader>
                     <div className="flex justify-between items-center">
-                        <DialogTitle className="text-3xl">{issue.title}</DialogTitle>
+                        <DialogTitle className="text-3xl">{issue.item.name}</DialogTitle>
                         {isProjectPage && (
                             <Button
                                 variant="ghost"

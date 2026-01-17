@@ -5,8 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { X, Search, Sliders } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DetailedIssue } from "./sprint-board";
-import { UserType } from "@/lib/types";
+import { DetailedIssue, UserType } from "@/lib/types";
 
 interface BoardFiltersProps {
   issues: DetailedIssue[];
@@ -28,7 +27,7 @@ export default function BoardFilters({ issues, onFilterChange }: BoardFiltersPro
 
   useEffect(() => {
     const filteredIssues = issues.filter((issue) => {
-      const matchesSearch = issue.title.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = issue.item.name.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesAssignee = selectedAssignees.length === 0 || (issue.assignee && selectedAssignees.includes(issue.assignee.id));
       const matchesPriority = selectedPriority === "all" || issue.priority === selectedPriority;
       return matchesSearch && matchesAssignee && matchesPriority;

@@ -6,7 +6,7 @@ import { auth } from "@clerk/nextjs/server";
 import { and, asc, desc, eq } from "drizzle-orm";
 
 type CreateIssueDataProp={
-    title: IssueType['title'],
+    title: IssueType['itemId'],
     assigneeId: IssueType['assigneeId'] | null,
     priority: IssueType['priority'],
     description?: IssueType['description'],
@@ -45,7 +45,7 @@ export async function createIssue(projectId:ProjectType['id'], data:CreateIssueD
     //   },
     // });
     const issue = await db.insert(issues).values({
-        title: data.title,
+        itemId: data.title,
         description: data.description,
         status: data.status,
         priority: data.priority,
@@ -74,7 +74,8 @@ export async function getIssuesForSprint(sprintId:SprintType['id']) {
         ],
         with:{
             assignee:true,
-            reporter:true
+            reporter:true,
+            item:true
         }
     })
 
@@ -161,6 +162,7 @@ export async function updateIssue(issueId:IssueType['id'], data:{status:IssueTyp
             with: {
                 assignee: true,
                 reporter: true,
+                item:true,
             },
         });
 
