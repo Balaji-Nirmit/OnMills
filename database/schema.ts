@@ -1,10 +1,11 @@
 import { relations } from "drizzle-orm";
-import { index, integer, pgEnum, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgEnum, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 
 
 export const sprintStatusEnum = pgEnum("sprint_status", ["PLANNED", "ACTIVE", "COMPLETED"]);
 export const issueStatusEnum = pgEnum("issue_status", ["TODO", "PURCHASE", "STORE", "BUFFING", "PAINTING", "WINDING", "ASSEMBLY", "PACKING", "SALES"]);
 export const issuePriorityEnum = pgEnum("issue_priority", ["LOW", "MEDIUM", "HIGH", "URGENT"]);
+export const quantityUnitEnum = pgEnum("quantity_unit",["PIECES","KILOGRAM","UNITS","GRAM","TONNE"]);
 
 export const userTable = pgTable('userTable', {
     id: uuid('id').primaryKey().defaultRandom(),
@@ -59,9 +60,16 @@ export const issues = pgTable("issues", {
     sprintId: uuid("sprint_id").references(() => sprintTable.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
-    track: issueStatusEnum("track").array().notNull().default(['TODO'])
+    track: issueStatusEnum("track").array().notNull().default(['TODO']),
+
+    // New field for inventory tracking
+    quantity: integer("quantity").notNull().default(1),
+    unit: quantityUnitEnum("unit").notNull().default('PIECES'),
+    parentId: uuid("parent_id").references(():any=>issues.id,{onDelete:"cascade"}), // Allows splitting batches by self referencing
+    isSplit: boolean("is_split").notNull().default(false) // Flag to indicate if this issue was a result of a split
 }, (t) => [
     index("status_order_idx").on(t.status, t.order),
+    index("item_status_idx").on(t.itemId, t.status), // Efficiently sum quantities per phase
 ]);
 
 
@@ -98,7 +106,7 @@ export const sprintRelations = relations(sprintTable, ({ one, many }) => ({
 }));
 
 // 5. Issue Relations
-export const issueRelations = relations(issues, ({ one }) => ({
+export const issueRelations = relations(issues, ({ one,many }) => ({
     item: one(itemTable,{
         fields:[issues.itemId],
         references:[itemTable.id],
@@ -120,5 +128,14 @@ export const issueRelations = relations(issues, ({ one }) => ({
         fields: [issues.reporterId],
         references: [userTable.id],
         relationName: "reporter",
+    }),
+    // relation for tracking split history.
+    parent: one(issues, {
+        fields: [issues.parentId],
+        references: [issues.id],
+        relationName: "splitHistory",
+    }),
+    children: many(issues, {
+        relationName: "splitHistory",
     }),
 }));

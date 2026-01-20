@@ -12,6 +12,8 @@ type CreateIssueDataProp={
     description?: IssueType['description'],
     status: IssueType['status'],
     sprintId: SprintType['id'],
+    quantity: IssueType['quantity'],
+    unit: IssueType['unit']
 }
 
 export async function createIssue(projectId:ProjectType['id'], data:CreateIssueDataProp) {
@@ -54,6 +56,8 @@ export async function createIssue(projectId:ProjectType['id'], data:CreateIssueD
         reporterId: user.id,
         assigneeId: data.assigneeId || null,
         order: newOrder,
+        quantity: data.quantity,
+        unit: data.unit,
     }).returning().then(res => res[0])
 
     return issue;
@@ -123,7 +127,16 @@ export async function deleteIssue(issueId:IssueType['id']) {
 }
 
 
-export async function updateIssue(issueId:IssueType['id'], data:{status:IssueType['status'], priority:IssueType['priority'], assigneeId:IssueType['assigneeId'], track:IssueType['track']}) {
+export async function updateIssue(
+    issueId: string, 
+    data: { 
+        status: IssueType['status'], 
+        priority: IssueType['priority'], 
+        assigneeId: IssueType['assigneeId'], 
+        track: IssueType['track'], 
+        quantity: number // This is the quantity being MOVED/SPLIT
+    }
+) {
     const { userId, orgId } = await auth();
 
     if (!userId || !orgId) {
@@ -131,44 +144,73 @@ export async function updateIssue(issueId:IssueType['id'], data:{status:IssueTyp
     }
 
     try {
-        const issue = await db.query.issues.findFirst({
-            where: eq(issues.id,issueId),
-            with:{
-                project:true
+        return await db.transaction(async (tx) => {
+            // 1. Fetch current state to check permissions and available quantity
+            const issue = await tx.query.issues.findFirst({
+                where: eq(issues.id, issueId),
+                with: { project: true }
+            });
+
+            if (!issue) throw new Error("Issue not found");
+            if (issue.project.organizationId !== orgId) throw new Error("Unauthorized");
+
+            const currentQty = issue.quantity;
+            const moveQty = data.quantity;
+
+            // 2. CHECK: If moving more than available
+            if (moveQty > currentQty) {
+                throw new Error("Insufficient quantity in this batch to split.");
             }
-        })
 
-        if (!issue) {
-            throw new Error("Issue not found");
-        }
+            // 3. CASE A: Moving the WHOLE batch (Standard Update)
+            if (moveQty === currentQty) {
+                await tx.update(issues).set({
+                    status: data.status,
+                    priority: data.priority,
+                    assigneeId: data.assigneeId,
+                    track: data.track,
+                    updatedAt: new Date(),
+                }).where(eq(issues.id, issueId));
 
-        if (issue.project.organizationId !== orgId) {
-            throw new Error("Unauthorized");
-        }
+                return await tx.query.issues.findFirst({
+                    where: eq(issues.id, issueId),
+                    with: { assignee: true, reporter: true, item: true },
+                });
+            }
 
-        // const updatedIssue = await db.update(issues).set({
-        //     status:data.status,
-        //     priority:data.priority,
-        // }).where(eq(issues.id,issueId)).returning().then(res=>res[0]);
-        await db.update(issues).set({
-                status:data.status,
-                priority:data.priority,
-                assigneeId:data.assigneeId,
-                track: data.track
-        }).where(eq(issues.id,issueId))
+            // 4. CASE B: SPLITTING (Partial quantity move)
+            // Step 1: Reduce the original issue's quantity
+            await tx.update(issues).set({
+                quantity: currentQty - moveQty, // Remaining amount
+                updatedAt: new Date(),
+            }).where(eq(issues.id, issueId));
 
-        const updatedIssue = await db.query.issues.findFirst({
-            where: eq(issues.id, issueId),
-            with: {
-                assignee: true,
-                reporter: true,
-                item:true,
-            },
+            // Step 2: Create a NEW issue for the moved quantity
+            const [newSplitIssue] = await tx.insert(issues).values({
+                itemId: issue.itemId,
+                description: issue.description,
+                projectId: issue.projectId,
+                reporterId: issue.reporterId, // Keep original reporter
+                assigneeId: data.assigneeId,  // New assignee for this phase
+                sprintId: issue.sprintId,
+                status: data.status,          // New status (e.g., PAINTING)
+                priority: data.priority,
+                order: issue.order,           // Usually placed in same order or end
+                quantity: moveQty,            // The 40 or 60 being moved
+                parentId: issue.id,           // Link to source
+                isSplit: true,
+                track: [...issue.track, data.status],
+            }).returning();
+
+            // Return the new split issue (the one that moved)
+            return await tx.query.issues.findFirst({
+                where: eq(issues.id, newSplitIssue.id),
+                with: { assignee: true, reporter: true, item: true },
+            });
         });
-
-        return updatedIssue;
     } catch (error) {
-        throw new Error("Error updating issue");
+        console.error(error);
+        throw new Error(error instanceof Error ? error.message : "Error updating issue");
     }
 }
 

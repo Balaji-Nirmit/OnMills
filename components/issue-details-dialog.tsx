@@ -27,6 +27,7 @@ import statuses from "@/data/status.json";
 import { deleteIssue, updateIssue } from "@/actions/issues";
 import { DetailedIssue, IssueType, UserType } from "@/lib/types";
 import { getOrganizationUsers } from "@/actions/organization";
+import { Input } from "./ui/input";
 
 const priorityOptions = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 
@@ -50,7 +51,8 @@ export default function IssueDetailsDialog({
     const [status, setStatus] = useState(issue.status);
     const [priority, setPriority] = useState(issue.priority);
     const [assigneeId, setAssigneeId] = useState(issue.assigneeId);
-    const [track,setTrack] = useState(issue.track);
+    const [quantity, setQuantity] = useState<number>(issue.quantity);
+    const [track, setTrack] = useState(issue.track);
     const { user } = useUser();
     const { organization, membership } = useOrganization();
     const router = useRouter();
@@ -78,22 +80,23 @@ export default function IssueDetailsDialog({
 
     const handleStatusChange = async (newStatus: IssueType['status']) => {
         setStatus(newStatus);
-        const newTrack = [...track,newStatus];
+        const newTrack = [...track, newStatus];
         setTrack(newTrack);
-        updateIssueFn(issue.id, { status: newStatus, priority, assigneeId, track: newTrack });
+        updateIssueFn(issue.id, { status: newStatus, priority, assigneeId, track: newTrack, quantity });
+        router.refresh()
     };
 
     const handlePriorityChange = async (newPriority: IssueType['priority']) => {
         setPriority(newPriority);
-        updateIssueFn(issue.id, { status, priority: newPriority, assigneeId, track });
+        updateIssueFn(issue.id, { status, priority: newPriority, assigneeId, track, quantity });
     };
 
     const handleAssigneeChange = async (newAssigneeId: UserType['id']) => {
         setAssigneeId(newAssigneeId);
-        updateIssueFn(issue.id, { status, priority, assigneeId: newAssigneeId, track });
+        updateIssueFn(issue.id, { status, priority, assigneeId: newAssigneeId, track, quantity });
     }
 
-    const { loading:gettingOrganizationUserLoading,fn: fetchUsers, data: users } = useFetch(getOrganizationUsers);
+    const { loading: gettingOrganizationUserLoading, fn: fetchUsers, data: users } = useFetch(getOrganizationUsers);
     console.log(organization?.id)
 
     useEffect(() => {
@@ -165,6 +168,7 @@ export default function IssueDetailsDialog({
                                 </SelectContent>
                             </Select>
                         </div>
+
                         <div>
                             <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 block">
                                 Priority
@@ -187,6 +191,29 @@ export default function IssueDetailsDialog({
                                 </SelectContent>
                             </Select>
                         </div>
+
+                        <div>
+                            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 block">
+                                Quantity
+                            </label>
+                            <div className="flex justify-center items-center gap-2">
+
+                                <Input value={quantity} type="number" max={issue.quantity} onChange={(e) => setQuantity(parseInt(e.target.value))} />
+                                <span>{issue.unit}</span>
+                            </div>
+                        </div>
+
+                        {status === 'SALES' && (
+                            <div>
+                                <label className="text-sm font-semibold text-gray-400 dark:text-gray-300 mb-2 block">
+                                    Sell item and update
+                                </label>
+                                <div>
+                                    <Button variant={'outline'} className="cursor-pointer">Sell Item</Button>
+                                </div>
+                            </div>
+                        )}
+
                     </div>
                     <div>
                         <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">

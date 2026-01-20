@@ -64,33 +64,33 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
             toast.warning("Cannot update board after sprint end");
             return;
         }
-    
+
         // 2. Early Exits
         if (isMobile || !currentSprint || !issues) return;
-    
+
         const { destination, source } = result;
-    
+
         if (
-            !destination || 
+            !destination ||
             (destination.droppableId === source.droppableId && destination.index === source.index)
         ) {
             return;
         }
-    
+
         // 3. Create a deep copy for manipulation
         const newIssues: DetailedIssue[] = [...issues];
-    
+
         // Filter issues by column
         const sourceItems = newIssues.filter((i) => i.status === source.droppableId);
         const destItems = newIssues.filter((i) => i.status === destination.droppableId);
-    
+
         // 4. Movement Logic
         if (source.droppableId === destination.droppableId) {
             // REORDERING (Same Column)
             const reordered = Array.from(sourceItems);
             const [removed] = reordered.splice(source.index, 1);
             reordered.splice(destination.index, 0, removed);
-            
+
             // Update local order indices
             reordered.forEach((item, idx) => {
                 item.order = idx;
@@ -98,34 +98,34 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
         } else {
             // MOVING (Cross Column)
             const [movedItem] = sourceItems.splice(source.index, 1);
-            
+
             const newStatus = destination.droppableId as DetailedIssue["status"];
-    
+
             // Logic: Update status AND append to history track
             movedItem.status = newStatus;
-            
+
             // Append the new status to the track array
             // We ensure track is initialized if it's somehow null/undefined
             movedItem.track = [...(movedItem.track || []), newStatus];
-    
+
             destItems.splice(destination.index, 0, movedItem);
-    
+
             // Re-index both affected columns
             sourceItems.forEach((item, i) => (item.order = i));
             destItems.forEach((item, i) => (item.order = i));
         }
-    
+
         // 5. Reconstruct the full list
         // We map through original issues and replace the ones that were in the affected columns
         const updated = newIssues.map((item) => {
             const found = [...sourceItems, ...destItems].find((i) => i.id === item.id);
             return found ? { ...found } : item;
         });
-    
+
         // 6. Update State & DB
         // Maintain the "Vision Pro" sorting for the lens/filter bar
         const sortedUpdated = updated.sort((a, b) => a.order - b.order);
-        
+
         setIssues(sortedUpdated);
         updateIssueOrderFn(sortedUpdated);
     };
@@ -141,7 +141,7 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
 
     // Shared Table Component (used on both mobile and large screens)
     const IssuesTable = () => (
-        <div className="rounded-3xl overflow-hidden bg-white/70 backdrop-blur-2xl  border border-white/50">
+        <div className="rounded-3xl overflow-hidden bg-white/70 backdrop-blur-2xl  border border-white/50 animate-in fade-in slide-in-from-bottom-2 duration-700">
             <div className="overflow-x-auto">
                 <table className="w-full min-w-175">
                     {/* Header */}
@@ -367,6 +367,98 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
         );
     };
 
+    // Inventory dashboard
+    const Inventory = () => {
+        const items = [...new Set(filteredIssues?.map(d => d.item.name))];
+        const inventoryDashboard = {};
+        filteredIssues?.forEach(i => {
+            const n = i.item.name;
+            const s = i.status;
+            const q = i.quantity
+            if (!inventoryDashboard[n]) {
+                inventoryDashboard[n] = {};
+            }
+            if (!inventoryDashboard[n][s]) {
+                inventoryDashboard[n][s] = 0;
+            }
+            inventoryDashboard[n][s] += q;
+        });
+
+        //  this is the inventory Dashboard structure
+        //  {
+        //     "TABLE BASE": {
+        //       "Purchase": 40,
+        //       "Store": 30,
+        //       "Buffing": 30
+        //     },
+        //     "GEAR BOX": {
+        //       "Purchase": 20,
+        //       "Assembly": 10
+        //     }
+        //   }
+
+        const STAGE_STYLES = {
+            SALES: "bg-green-100 text-green-700 border-green-200",
+            PURCHASE: "bg-blue-100 text-blue-700 border-blue-200",
+            TODO: "bg-purple-100 text-purple-700 border-purple-200",
+            DEFAULT: "bg-gray-100 text-gray-700 border-gray-200",
+        };
+
+
+        return (
+            <>
+                <div className="rounded-3xl overflow-hidden bg-white/70 backdrop-blur-2xl  border border-white/50 animate-in fade-in slide-in-from-bottom-2 duration-700">
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-175">
+                            <thead>
+                                <tr className="border-b border-gray-200/50">
+                                    <th className="text-left px-8 py-2 text-sm font-semibold text-gray-600 uppercase tracking-wide">Item</th>
+                                    {statuses.map(stage => (
+                                        <th
+                                            key={stage.key}
+                                            className={`
+                                 px-6 py-2 text-center text-xs font-semibold uppercase tracking-wider
+                                 rounded-full 
+                                 ${STAGE_STYLES[stage.key] || STAGE_STYLES.DEFAULT}
+                               `}
+                                        >
+                                            {stage.key}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100/60">
+                                {filteredIssues && filteredIssues.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={10} className="py-4 text-center">
+                                            <div className="max-w-md mx-auto">
+                                                <div className="text-7xl mb-6 text-gray-150">📂</div>
+                                                <p className="text-xl font-medium text-gray-700">All clear</p>
+                                                <p className="text-base text-gray-500 mt-3">
+                                                    No issues in this sprint yet. Create one to get started.
+                                                </p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    items.map(item => (
+                                        <tr key={item} className="hover:bg-white/40 transition-all duration-300">
+                                            <td className="px-8 py-6">{item}</td>
+                                            {statuses.map(stage => (
+                                                <td key={stage.key} className="px-8 py-6">
+                                                    {inventoryDashboard[item]?.[stage.key] ?? 0}
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    )))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </>
+        )
+    }
+
 
     return (
         <div className="space-y-12">
@@ -430,6 +522,9 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
                         </TabsTrigger>
                         <TabsTrigger value="cycle" className="px-7 py-2 text-sm font-medium rounded-full data-[state=active]:bg-black data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-black transition-all">
                             Material Life Cycle
+                        </TabsTrigger>
+                        <TabsTrigger value="inventory" className="px-7 py-2 text-sm font-medium rounded-full data-[state=active]:bg-black data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-black transition-all">
+                            Inventory
                         </TabsTrigger>
                     </TabsList>
                     <TabsContent value="kanban">
@@ -520,6 +615,13 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
                     <TabsContent value="cycle">
                         {/* Material LifeCycle */}
                         <IssueLifecycleDisplay />
+                    </TabsContent>
+                    <TabsContent value="inventory">
+                        {/* Inventory dashbaord */}
+                        <div>
+                            <h2 className="text-lg font-semibold text-gray-900 mb-5">Inventory</h2>
+                            <Inventory />
+                        </div>
                     </TabsContent>
                 </Tabs>
 

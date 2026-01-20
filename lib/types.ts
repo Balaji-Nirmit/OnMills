@@ -49,6 +49,10 @@ export interface IssueType {
     createdAt: Date;
     updatedAt: Date;
     track: IssueType["status"][];
+    quantity: number;
+    unit: 'PIECES' | 'KILOGRAM' | 'UNITS' | 'GRAM' | 'TONNE';
+    parentId: string | null;
+    isSplit: boolean;
 }
 
 export type DetailedIssue = IssueType & {

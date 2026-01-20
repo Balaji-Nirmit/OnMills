@@ -26,6 +26,8 @@ export const issueSchema = z.object({
   assigneeId: z.uuid("Please select assignee"),
   description: z.string().optional(),
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]),
+  quantity: z.number("Please set quantity").gte(1,"Minimum quantity should be 1"),
+  unit: z.enum(["PIECES","KILOGRAM","UNITS","GRAM","TONNE"]),
 });
 
 export const itemSchema = z.object({

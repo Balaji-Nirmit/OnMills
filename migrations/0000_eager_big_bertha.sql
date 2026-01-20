@@ -1,9 +1,10 @@
 CREATE TYPE "public"."issue_priority" AS ENUM('LOW', 'MEDIUM', 'HIGH', 'URGENT');--> statement-breakpoint
-CREATE TYPE "public"."issue_status" AS ENUM('TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE');--> statement-breakpoint
+CREATE TYPE "public"."issue_status" AS ENUM('TODO', 'PURCHASE', 'STORE', 'BUFFING', 'PAINTING', 'WINDING', 'ASSEMBLY', 'PACKING', 'SALES');--> statement-breakpoint
+CREATE TYPE "public"."quantity_unit" AS ENUM('PIECES', 'KILOGRAM', 'UNITS', 'GRAM', 'TONNE');--> statement-breakpoint
 CREATE TYPE "public"."sprint_status" AS ENUM('PLANNED', 'ACTIVE', 'COMPLETED');--> statement-breakpoint
 CREATE TABLE "issues" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"title" text NOT NULL,
+	"item_id" uuid NOT NULL,
 	"description" text,
 	"status" "issue_status" NOT NULL,
 	"order" integer NOT NULL,
@@ -13,7 +14,18 @@ CREATE TABLE "issues" (
 	"project_id" uuid NOT NULL,
 	"sprint_id" uuid,
 	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp DEFAULT now() NOT NULL
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	"track" "issue_status"[] DEFAULT '{"TODO"}' NOT NULL,
+	"quantity" integer DEFAULT 1 NOT NULL,
+	"unit" "quantity_unit" DEFAULT 'PIECES' NOT NULL,
+	"parent_id" uuid,
+	"is_split" boolean DEFAULT false
+);
+--> statement-breakpoint
+CREATE TABLE "itemTable" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"name" text NOT NULL,
+	"project_id" uuid NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "projectTable" (
@@ -35,8 +47,7 @@ CREATE TABLE "sprintTable" (
 	"status" "sprint_status" DEFAULT 'PLANNED' NOT NULL,
 	"project_id" uuid NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp DEFAULT now() NOT NULL,
-	CONSTRAINT "sprintTable_name_unique" UNIQUE("name")
+	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "userTable" (
@@ -51,9 +62,13 @@ CREATE TABLE "userTable" (
 	CONSTRAINT "userTable_email_unique" UNIQUE("email")
 );
 --> statement-breakpoint
+ALTER TABLE "issues" ADD CONSTRAINT "issues_item_id_itemTable_id_fk" FOREIGN KEY ("item_id") REFERENCES "public"."itemTable"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "issues" ADD CONSTRAINT "issues_assignee_id_userTable_id_fk" FOREIGN KEY ("assignee_id") REFERENCES "public"."userTable"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "issues" ADD CONSTRAINT "issues_reporter_id_userTable_id_fk" FOREIGN KEY ("reporter_id") REFERENCES "public"."userTable"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "issues" ADD CONSTRAINT "issues_project_id_projectTable_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projectTable"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "issues" ADD CONSTRAINT "issues_sprint_id_sprintTable_id_fk" FOREIGN KEY ("sprint_id") REFERENCES "public"."sprintTable"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "issues" ADD CONSTRAINT "issues_parent_id_issues_id_fk" FOREIGN KEY ("parent_id") REFERENCES "public"."issues"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "itemTable" ADD CONSTRAINT "itemTable_project_id_projectTable_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projectTable"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "sprintTable" ADD CONSTRAINT "sprintTable_project_id_projectTable_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projectTable"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-CREATE INDEX "status_order_idx" ON "issues" USING btree ("status","order");
+CREATE INDEX "status_order_idx" ON "issues" USING btree ("status","order");--> statement-breakpoint
+CREATE INDEX "item_status_idx" ON "issues" USING btree ("item_id","status");

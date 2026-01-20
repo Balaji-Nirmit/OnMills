@@ -1,0 +1,1 @@
+ALTER TABLE "issues" ALTER COLUMN "is_split" SET NOT NULL;

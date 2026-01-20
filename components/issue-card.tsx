@@ -14,13 +14,13 @@ const priorityConfig = {
 };
 
 interface IssueCardProps {
-    issue: DetailedIssue;
-    showStatus?: boolean;
-    onDelete?: () => void;
-    onUpdate?: (updated: IssueType) => void;
+  issue: DetailedIssue;
+  showStatus?: boolean;
+  onDelete?: () => void;
+  onUpdate?: (updated: IssueType) => void;
 }
 
-export default function IssueCard({ issue, showStatus = false, onDelete = () => {}, onUpdate = () => {} }: IssueCardProps) {
+export default function IssueCard({ issue, showStatus = false, onDelete = () => { }, onUpdate = () => { } }: IssueCardProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const router = useRouter();
   const config = priorityConfig[issue.priority];
@@ -34,11 +34,14 @@ export default function IssueCard({ issue, showStatus = false, onDelete = () => 
             <div className={`flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/60 border border-white/80 ${config.glow}`}><div className={`w-1.5 h-1.5 rounded-full ${config.color}`} /><span className={`text-[9px] font-black uppercase tracking-[0.15em] ${config.text}`}>{config.label}</span></div>
             {showStatus && <span className="text-[9px] font-bold text-[#1D1D1F]/40 uppercase tracking-widest bg-black/5 px-2 py-0.5 rounded-md">{issue.status}</span>}
           </div>
+          <div className="flex justify-between">
           <h3 className="text-[16px] font-semibold text-[#1D1D1F] tracking-tight">{issue.item.name}</h3>
-          <div className="flex items-center justify-between pt-3 border-t border-black/4">
+          <span>{issue.quantity} {issue.unit}</span>
+          </div>
+          {/* <div className="flex items-center justify-between pt-3 border-t border-black/4">
             <UserAvatar user={issue.assignee} />
             <time className="text-[10px] font-medium text-[#86868B]/70 tabular-nums">{formatDistanceToNow(new Date(issue.createdAt), { addSuffix: true })}</time>
-          </div>
+          </div> */}
         </div>
         <div className="absolute inset-0 rounded-[28px] ring-1 ring-inset ring-white/50 pointer-events-none" />
       </div>
