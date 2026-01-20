@@ -154,6 +154,9 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
                                 Status
                             </th>
                             <th className="text-left px-8 py-2 text-sm font-semibold text-gray-600 uppercase tracking-wide">
+                                Quantity
+                            </th>
+                            <th className="text-left px-8 py-2 text-sm font-semibold text-gray-600 uppercase tracking-wide">
                                 Priority
                             </th>
                             <th className="text-left px-8 py-2 text-sm font-semibold text-gray-600 uppercase tracking-wide">
@@ -203,6 +206,12 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
                                                 }`}
                                         >
                                             {statuses.find((s) => s.key === issue.status)?.name || issue.status}
+                                        </div>
+                                    </td>
+
+                                    <td className="px-8 py-6">
+                                        <div className="text-base font-medium text-gray-900 leading-snug">
+                                            {issue.quantity}
                                         </div>
                                     </td>
 
@@ -499,7 +508,10 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
                             Table
                         </TabsTrigger>
                         <TabsTrigger value="cycle" className="px-7 py-2 text-sm font-medium rounded-full data-[state=active]:bg-black data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-black transition-all">
-                            Material Life Cycle
+                            Life Cycle
+                        </TabsTrigger>
+                        <TabsTrigger value="inventory" className="px-7 py-2 text-sm font-medium rounded-full data-[state=active]:bg-black data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-black transition-all">
+                            Inventory
                         </TabsTrigger>
                     </TabsList>
                     <TabsContent value="table">
@@ -509,6 +521,10 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
                     <TabsContent value="cycle">
                         {/* Material LifeCycle */}
                         <IssueLifecycleDisplay />
+                    </TabsContent>
+                    <TabsContent value="inventory">
+                        {/* Inventory */}
+                        <Inventory />
                     </TabsContent>
                 </Tabs>
             ) : (

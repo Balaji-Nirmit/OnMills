@@ -3,9 +3,8 @@ import { getProject } from "@/actions/project";
 import { notFound } from "next/navigation";
 import CreateSprint from "../_components/create-sprint";
 import SprintBoard from "../_components/sprint-board";
-import { BarChart3, Clock, Target, Layers, Box, TicketCheck } from "lucide-react";
+import { Target, Layers, Box, TicketCheck } from "lucide-react";
 import { ProjectType } from "@/lib/types";
-import CreateItem from "../_components/create-item";
 import { getProjectItems } from "@/actions/items";
 
 type Props={
@@ -28,8 +27,8 @@ const Project = async ({ params }:Props) => {
   const totalItems =  projectItems.length || 0;
 
   return (
-    <div className="min-h-screen bg-[#FAF9F6]">
-      <main className="max-w-400 mx-auto px-8 py-10">
+    <div className="min-h-screen bg-[#FAF9F6] overflow-x-hidden">
+      <main className="max-w-400 mx-auto px-2 sm:px-8 py-10">
         
         {/* 1. PROJECT METADATA STRIP */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-10">

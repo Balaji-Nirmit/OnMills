@@ -14,32 +14,35 @@ export async function createSprint(projectId:ProjectType['id'], data:CreateSprin
     const { userId, orgId } = await auth();
 
     if (!userId || !orgId) {
-        throw new Error("Unauthorized");
+        throw new Error("Unauthorized access");
     }
+    try{
 
-    const project = await db.select().from(projectTable).where(eq(projectTable.id, projectId)).then(res => res[0])
-
-    if (!project || project.organizationId !== orgId) {
-        throw new Error("Project not found");
+        const project = await db.select().from(projectTable).where(eq(projectTable.id, projectId)).then(res => res[0])
+    
+        if (!project || project.organizationId !== orgId) {
+            throw new Error("Project not found");
+        }
+    
+        const sprint = await db.insert(sprintTable).values({
+            name: data.name,
+            startDate: data.startDate,
+            endDate: data.endDate,
+            status: "PLANNED",
+            projectId: projectId,
+        }).returning().then(res => res[0]);
+    
+        return sprint;
+    }catch(error){
+        throw new Error("Error creating sprint")
     }
-
-    const sprint = await db.insert(sprintTable).values({
-
-        name: data.name,
-        startDate: data.startDate,
-        endDate: data.endDate,
-        status: "PLANNED",
-        projectId: projectId,
-    }).returning().then(res => res[0]);
-
-    return sprint;
 }
 
 export async function updateSprintStatus(sprintId:SprintType['id'], newStatus:SprintType['status']) {
     const { userId, orgId, orgRole } = await auth();
 
     if (!userId || !orgId) {
-        throw new Error("Unauthorized");
+        throw new Error("Unauthorized access");
     }
 
     try {
@@ -55,7 +58,7 @@ export async function updateSprintStatus(sprintId:SprintType['id'], newStatus:Sp
         }
 
           if (sprint.project.organizationId !== orgId) {
-            throw new Error("Unauthorized");
+            throw new Error("Unauthorized access");
           }
 
         if (orgRole !== "org:admin") {

@@ -124,3 +124,19 @@
     @apply bg-background text-foreground;
   }
 }
+
+html, 
+body {
+  /* Prevents the 'rubber-band' bouncing effect on all axes */
+  overscroll-behavior: none;
+  
+  /* Ensures your Glassmorphism background stays fixed 
+     and doesn't move during scroll attempts */
+  background-attachment: fixed;
+  overflow-x: hidden; /* Prevents accidental horizontal jitter */
+}
+
+/* specific scrollable containers infinite scroll lists */
+.scrollable-container {
+  overscroll-behavior: contain;
+}

@@ -23,44 +23,50 @@ export async function createIssue(projectId:ProjectType['id'], data:CreateIssueD
         throw new Error("Unauthorized");
     }
 
-    let user = await db.select().from(userTable).where(eq(userTable.clerkId, userId)).then(res => res[0]);
+    try{
 
-    const lastIssue = await db.select().from(issues).where(and(eq(issues.projectId, projectId), eq(issues.status, data.status))).orderBy(desc(issues.order)).limit(1).then(res => res[0]);
+        let user = await db.select().from(userTable).where(eq(userTable.clerkId, userId)).then(res => res[0]);
+    
+        const lastIssue = await db.select().from(issues).where(and(eq(issues.projectId, projectId), eq(issues.status, data.status))).orderBy(desc(issues.order)).limit(1).then(res => res[0]);
+    
+        const newOrder = lastIssue ? lastIssue.order + 1 : 0;
+    
+        // const issue = await db.issue.create({
+        //   data: {
+        //     title: data.title,
+        //     description: data.description,
+        //     status: data.status,
+        //     priority: data.priority,
+        //     projectId: projectId,
+        //     sprintId: data.sprintId,
+        //     reporterId: user.id,
+        //     assigneeId: data.assigneeId || null, // Add this line
+        //     order: newOrder,
+        //   },
+        //   include: {
+        //     assignee: true,
+        //     reporter: true,
+        //   },
+        // });
+        const issue = await db.insert(issues).values({
+            itemId: data.title,
+            description: data.description,
+            status: data.status,
+            priority: data.priority,
+            projectId: projectId,
+            sprintId: data.sprintId,
+            reporterId: user.id,
+            assigneeId: data.assigneeId || null,
+            order: newOrder,
+            quantity: data.quantity,
+            unit: data.unit,
+        }).returning().then(res => res[0])
+    
+        return issue;
+    }catch(error){
+        throw new Error("Error creating issue")
+    }
 
-    const newOrder = lastIssue ? lastIssue.order + 1 : 0;
-
-    // const issue = await db.issue.create({
-    //   data: {
-    //     title: data.title,
-    //     description: data.description,
-    //     status: data.status,
-    //     priority: data.priority,
-    //     projectId: projectId,
-    //     sprintId: data.sprintId,
-    //     reporterId: user.id,
-    //     assigneeId: data.assigneeId || null, // Add this line
-    //     order: newOrder,
-    //   },
-    //   include: {
-    //     assignee: true,
-    //     reporter: true,
-    //   },
-    // });
-    const issue = await db.insert(issues).values({
-        itemId: data.title,
-        description: data.description,
-        status: data.status,
-        priority: data.priority,
-        projectId: projectId,
-        sprintId: data.sprintId,
-        reporterId: user.id,
-        assigneeId: data.assigneeId || null,
-        order: newOrder,
-        quantity: data.quantity,
-        unit: data.unit,
-    }).returning().then(res => res[0])
-
-    return issue;
 }
 
 export async function getIssuesForSprint(sprintId:SprintType['id']) {
@@ -70,20 +76,25 @@ export async function getIssuesForSprint(sprintId:SprintType['id']) {
         throw new Error("Unauthorized");
     }
 
-    const issuesdata = await db.query.issues.findMany({
-        where: eq(issues.sprintId,sprintId),
-        orderBy:[
-            asc(issues.status),
-            desc(issues.order),
-        ],
-        with:{
-            assignee:true,
-            reporter:true,
-            item:true
-        }
-    })
+    try{
+        const issuesdata = await db.query.issues.findMany({
+            where: eq(issues.sprintId,sprintId),
+            orderBy:[
+                asc(issues.status),
+                desc(issues.order),
+            ],
+            with:{
+                assignee:true,
+                reporter:true,
+                item:true
+            }
+        })
+    
+        return issuesdata;
+    }catch(error){
+        throw new Error("Error getting issues of sprint")
+    }
 
-    return issuesdata;
 }
 
 export async function deleteIssue(issueId:IssueType['id']) {
@@ -93,37 +104,42 @@ export async function deleteIssue(issueId:IssueType['id']) {
         throw new Error("Unauthorized");
     }
 
-    const user = await db.select().from(userTable).where(eq(userTable.clerkId, userId));
-
-    if (!user) {
-        throw new Error("User not found");
-    }
-
-    const issue = await db.query.issues.findFirst({
-        where: eq(issues.id,issueId),
-        with:{
-            project:true
+    try{
+        const user = await db.select().from(userTable).where(eq(userTable.clerkId, userId));
+    
+        if (!user) {
+            throw new Error("User not found");
         }
-    })
-
-    if (!issue) {
-        throw new Error("Issue not found");
-    }
     
-    // Check if the issue belongs to the user's current organization
-    if (issue.project.organizationId !== orgId) {
-        throw new Error("You don't have permission to delete this issue");
-    }
+        const issue = await db.query.issues.findFirst({
+            where: eq(issues.id,issueId),
+            with:{
+                project:true
+            }
+        })
     
-    // Logic: Allow if user is the reporter OR part of the organization
-    if (issue.reporterId !== user[0].id && issue.project.organizationId !== orgId) {
-        throw new Error("Unauthorized");
+        if (!issue) {
+            throw new Error("Issue not found");
+        }
+        
+        // Check if the issue belongs to the user's current organization
+        if (issue.project.organizationId !== orgId) {
+            throw new Error("You don't have permission to delete this issue");
+        }
+        
+        // Logic: Allow if user is the reporter OR part of the organization
+        if (issue.reporterId !== user[0].id && issue.project.organizationId !== orgId) {
+            throw new Error("Unauthorized");
+        }
+    
+        // await db.issue.delete({ where: { id: issueId } });
+        await db.delete(issues).where(eq(issues.id, issueId));
+    
+        return { success: true };
+    }catch(error){
+        throw new Error("Error deleting issue")
     }
 
-    // await db.issue.delete({ where: { id: issueId } });
-    await db.delete(issues).where(eq(issues.id, issueId));
-
-    return { success: true };
 }
 
 
@@ -209,8 +225,7 @@ export async function updateIssue(
             });
         });
     } catch (error) {
-        console.error(error);
-        throw new Error(error instanceof Error ? error.message : "Error updating issue");
+        throw new Error("Error updating issue");
     }
 }
 
@@ -220,17 +235,22 @@ export async function updateIssueOrder(updatedIssues:{status:IssueType['status']
     if (!userId || !orgId) {
         throw new Error("Unauthorized");
     }
-    await db.transaction(async (tx) => {
-        for (const issue of updatedIssues) {
-            await tx.update(issues).set({
-                status: issue.status,
-                order: issue.order,
-                track: issue.track,
-                updatedAt: new Date(),
-            }).where(eq(issues.id, issue.id))
-        }
-    })
-    //(issue.track ?? []) This ensures that if the column is empty (null), the code sees [] instead
 
-    return { success: true };
+    try{
+        await db.transaction(async (tx) => {
+            for (const issue of updatedIssues) {
+                await tx.update(issues).set({
+                    status: issue.status,
+                    order: issue.order,
+                    track: issue.track,
+                    updatedAt: new Date(),
+                }).where(eq(issues.id, issue.id))
+            }
+        })
+        //(issue.track ?? []) This ensures that if the column is empty (null), the code sees [] instead
+    
+        return { success: true };
+    }catch(error){
+        throw new Error("Error updating issue order")
+    }
 }

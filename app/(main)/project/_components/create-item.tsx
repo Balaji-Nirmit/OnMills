@@ -131,7 +131,7 @@ const CreateItem = ({ projectTitle, projectId, items }: CreateItemProps) => {
                         Show Items
                     </Button>
                 </PopoverTrigger>
-                <PopoverContent side="left" className="w-80 bg-white/80 backdrop-blur-xl border border-[#F2F0EB] rounded-2xl shadow-xl" align="end" sideOffset={10}>
+                <PopoverContent side="top" className="w-80 bg-white border border-[#F2F0EB] rounded-2xl shadow-xl" align="end" sideOffset={10}>
                     {(deleteItemLoading) && (
                         <BarLoader width={"100%"} color="#36d7b7" />
                     )}

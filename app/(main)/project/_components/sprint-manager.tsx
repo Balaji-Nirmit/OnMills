@@ -193,8 +193,8 @@ export default function SprintManager({
             <Button
               onClick={() => handleStatusChange("COMPLETED")}
               disabled={loading}
-              className="h-12 px-8 bg-[#1D1D1F] hover:bg-black text-white rounded-xl font-bold text-[13px] shadow-lg shadow-black/5 transition-all active:scale-95 flex items-center gap-2"
-            >
+              className="h-12 px-6 rounded-xl font-bold text-[13px] transition-all active:scale-95 flex items-center gap-2 bg-[#1D1D1F] text-white hover:bg-black"
+              >
               <Square size={14} fill="currentColor" />
               End Operation
             </Button>
