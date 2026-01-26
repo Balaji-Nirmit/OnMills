@@ -23,6 +23,7 @@ type CreateItemProps = {
 }
 type ItemFormData = {
     name: string;
+    reorderValue: number;
 }
 
 const CreateItem = ({ projectTitle, projectId, items }: CreateItemProps) => {
@@ -58,7 +59,7 @@ const CreateItem = ({ projectTitle, projectId, items }: CreateItemProps) => {
     };
 
     const onSubmit = async (data: ItemFormData) => {
-        await createItemFn(projectId, data.name);
+        await createItemFn(projectId, data.name, data.reorderValue);
     };
 
     useEffect(() => {
@@ -107,6 +108,21 @@ const CreateItem = ({ projectTitle, projectId, items }: CreateItemProps) => {
                                 </p>
                             )}
                         </div>
+                        <div className="space-y-2">
+                            <label className="text-[11px] font-bold text-[#1D1D1F] ml-1">Reorder Value</label>
+                            <Input
+                                id="reorderValue"
+                                {...register("reorderValue", { valueAsNumber: true })}
+                                type="number"
+                                placeholder="Reorder Value"
+                                className="h-14 bg-white/50 border-[#F2F0EB] rounded-2xl font-mono text-[14px] font-bold text-[#1D1D1F] focus-visible:ring-2 focus-visible:ring-[#FF7A5C]/20 focus-visible:border-[#FF7A5C]"
+                            />
+                            {errors.reorderValue && (
+                                <p className="text-[#FF7A5C] text-[11px] font-bold mt-2 ml-1 uppercase tracking-tighter">
+                                    {errors.reorderValue.message as string}
+                                </p>
+                            )}
+                        </div>
                         <Button
                             type="submit"
                             disabled={createItemLoading}
@@ -141,6 +157,7 @@ const CreateItem = ({ projectTitle, projectId, items }: CreateItemProps) => {
                             <Item key={item.id} className="group border-[#F2F0EB] hover:border-[#FF7A5C]/30 transition-colors">
                                 <ItemContent>
                                     <ItemDescription className="font-mono text-[12px] font-bold text-[#1D1D1F]">{item.name}</ItemDescription>
+                                    <ItemDescription>Reorder Value: <span className="font-mono text-[12px] font-bold text-[#1D1D1F]">{item.reorderValue}</span></ItemDescription>
                                 </ItemContent>
                                 <ItemActions>
                                     {canChange && <Button disabled={deleteItemLoading} onClick={() => handleDelete(item.id)} variant="ghost" size="icon" className="h-8 w-8 text-[#86868B] hover:text-red-500 hover:bg-red-50 transition-colors">

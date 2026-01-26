@@ -15,6 +15,13 @@
       "when": 1768675609133,
       "tag": "0001_yummy_turbo",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1769429112420,
+      "tag": "0002_quick_shotgun",
+      "breakpoints": true
     }
   ]
 }

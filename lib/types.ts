@@ -32,6 +32,7 @@ export interface SprintType {
 export interface ItemType {
     id: string;
     name: string;
+    reorderValue: number;
     projectId: string;
 }
 

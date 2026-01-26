@@ -5,7 +5,7 @@ import { ItemType, ProjectType } from "@/lib/types";
 import { auth } from "@clerk/nextjs/server";
 import { and, eq } from "drizzle-orm";
 
-export async function createItem(projectId: ProjectType['id'], itemName: ItemType['name']) {
+export async function createItem(projectId: ProjectType['id'], itemName: ItemType['name'], itemReorderValue: ItemType['reorderValue']) {
     const { userId, orgId } = await auth();
 
     if (!userId || !orgId) {
@@ -21,6 +21,7 @@ export async function createItem(projectId: ProjectType['id'], itemName: ItemTyp
     
         const item = await db.insert(itemTable).values({
             name: itemName,
+            reorderValue: itemReorderValue,
             projectId: projectId
         }).returning().then(res => res[0]);
         return item

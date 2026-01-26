@@ -43,6 +43,7 @@ export const sprintTable = pgTable("sprintTable", {
 export const itemTable = pgTable("itemTable",{
     id: uuid("id").primaryKey().defaultRandom(),
     name: text("name").notNull(),
+    reorderValue: integer("reorder_value").notNull().default(0),
     projectId: uuid("project_id").notNull().references(()=> projectTable.id, {onDelete:"cascade"}),
 })
 

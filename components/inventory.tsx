@@ -1,14 +1,16 @@
 // Inventory dashboard
 import statuses from "@/data/status.json";
 import { ComponentProcessMap, DetailedIssue } from "@/lib/types";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 type Prop = {
-    filteredIssues:DetailedIssue[] | null
+    filteredIssues: DetailedIssue[] | null
 }
-const Inventory = ({filteredIssues}:Prop) => {
+const Inventory = ({ filteredIssues }: Prop) => {
     const items = [...new Set(filteredIssues?.map(d => d.item.name))];
-    const inventoryDashboard:ComponentProcessMap = {};
+    const inventoryDashboard: ComponentProcessMap = {};
     filteredIssues?.forEach(i => {
         const n = i.item.name;
+        const rv = i.item.reorderValue;
         const s = i.status;
         const q = i.quantity
         if (!inventoryDashboard[n]) {
@@ -16,6 +18,7 @@ const Inventory = ({filteredIssues}:Prop) => {
         }
         if (!inventoryDashboard[n][s]) {
             inventoryDashboard[n][s] = 0;
+            inventoryDashboard[n]["REORDER_VALUE"] = rv;
         }
         inventoryDashboard[n][s] += q;
     });
@@ -34,6 +37,7 @@ const Inventory = ({filteredIssues}:Prop) => {
     //   }
 
     const STAGE_STYLES = {
+        STORE: "bg-amber-100 text-amber-700 border-amber-200",
         SALES: "bg-green-100 text-green-700 border-green-200",
         PURCHASE: "bg-blue-100 text-blue-700 border-blue-200",
         TODO: "bg-purple-100 text-purple-700 border-purple-200",
@@ -77,16 +81,63 @@ const Inventory = ({filteredIssues}:Prop) => {
                                     </td>
                                 </tr>
                             ) : (
-                                items.map(item => (
-                                    <tr key={item} className="hover:bg-white/40 transition-all duration-300">
-                                        <td className="px-8 py-6">{item}</td>
-                                        {statuses.map(stage => (
-                                            <td key={stage.key} className="px-8 py-6 text-center">
-                                                {inventoryDashboard[item]?.[stage.key] ?? '.'}
+                                items.map(item => {
+                                    const quantityInStore = inventoryDashboard[item]?.["STORE"] || 0;
+                                    const isLowStock = quantityInStore <= inventoryDashboard[item]?.["REORDER_VALUE"];
+                                    
+                                    return (
+                                        <tr key={item} className="group hover:bg-white/10 border-b border-white/5 transition-all duration-500 ease-out">
+                                            <td className="px-8 py-6 font-medium">
+                                                <div className="flex items-center gap-4">
+                                                    <span className="tracking-wide">{item}</span>
+                                                    {isLowStock && (
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                            <span className="
+                                                            relative
+                                                            px-3 
+                                                            py-1 
+                                                            text-[10px] 
+                                                            font-bold 
+                                                            uppercase 
+                                                            tracking-widest
+                                                            text-red-500
+                                                            bg-amber-500/10
+                                                            border border-red-500/30
+                                                            rounded-full
+                                                            backdrop-blur-md
+                                                            shadow-[0_0_15px_rgba(245,158,11,0.2)]
+                                                            animate-pulse
+                                                            before:content-['']
+                                                            before:absolute
+                                                            before:inset-0
+                                                            before:rounded-full
+                                                            before:bg-amber-400/5
+                                                            group-hover:shadow-[0_0_20px_rgba(245,158,11,0.4)]
+                                                            transition-shadow
+                                                            duration-500
+                                                        ">
+                                                            Low Stock
+                                                        </span>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p>Reorder value = {inventoryDashboard[item]?.["REORDER_VALUE"]}</p>
+                                                                <p>Stock in Store = {inventoryDashboard[item]?.["STORE"] ?? 0}</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    )}
+                                                </div>
                                             </td>
-                                        ))}
-                                    </tr>
-                                )))}
+                                            {statuses.map(stage => (
+                                                <td key={stage.key} className="px-8 py-6 text-center font-mono transition-colors duration-300">
+                                                    {inventoryDashboard[item]?.[stage.key] ?? '.'}
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    );
+                                })
+                            )
+                            }
                         </tbody>
                     </table>
                 </div>
