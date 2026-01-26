@@ -20,7 +20,7 @@ export async function createIssue(projectId:ProjectType['id'], data:CreateIssueD
     const { userId, orgId } = await auth();
 
     if (!userId || !orgId) {
-        throw new Error("Unauthorized");
+        throw new Error("Unauthorized access");
     }
 
     try{
@@ -73,7 +73,7 @@ export async function getIssuesForSprint(sprintId:SprintType['id']) {
     const { userId, orgId } = await auth();
 
     if (!userId || !orgId) {
-        throw new Error("Unauthorized");
+        throw new Error("Unauthorized access");
     }
 
     try{
@@ -101,7 +101,7 @@ export async function deleteIssue(issueId:IssueType['id']) {
     const { userId, orgId } = await auth();
 
     if (!userId || !orgId) {
-        throw new Error("Unauthorized");
+        throw new Error("Unauthorized access");
     }
 
     try{
@@ -121,6 +121,10 @@ export async function deleteIssue(issueId:IssueType['id']) {
         if (!issue) {
             throw new Error("Issue not found");
         }
+
+        if(issue.isSplit){
+            throw new Error("Can't be deleted. Delete children first")
+        }
         
         // Check if the issue belongs to the user's current organization
         if (issue.project.organizationId !== orgId) {
@@ -129,7 +133,7 @@ export async function deleteIssue(issueId:IssueType['id']) {
         
         // Logic: Allow if user is the reporter OR part of the organization
         if (issue.reporterId !== user[0].id && issue.project.organizationId !== orgId) {
-            throw new Error("Unauthorized");
+            throw new Error("Unauthorized access");
         }
     
         // await db.issue.delete({ where: { id: issueId } });
@@ -156,7 +160,7 @@ export async function updateIssue(
     const { userId, orgId } = await auth();
 
     if (!userId || !orgId) {
-        throw new Error("Unauthorized");
+        throw new Error("Unauthorized access");
     }
 
     try {
@@ -168,7 +172,7 @@ export async function updateIssue(
             });
 
             if (!issue) throw new Error("Issue not found");
-            if (issue.project.organizationId !== orgId) throw new Error("Unauthorized");
+            if (issue.project.organizationId !== orgId) throw new Error("Unauthorized access");
 
             const currentQty = issue.quantity;
             const moveQty = data.quantity;
@@ -198,6 +202,7 @@ export async function updateIssue(
             // Step 1: Reduce the original issue's quantity
             await tx.update(issues).set({
                 quantity: currentQty - moveQty, // Remaining amount
+                isSplit:true,
                 updatedAt: new Date(),
             }).where(eq(issues.id, issueId));
 
@@ -214,7 +219,7 @@ export async function updateIssue(
                 order: issue.order,           // Usually placed in same order or end
                 quantity: moveQty,            // The 40 or 60 being moved
                 parentId: issue.id,           // Link to source
-                isSplit: true,
+                isSplit: false,
                 track: [...issue.track, data.status],
             }).returning();
 
@@ -233,7 +238,7 @@ export async function updateIssueOrder(updatedIssues:{status:IssueType['status']
     const { userId, orgId } = await auth();
 
     if (!userId || !orgId) {
-        throw new Error("Unauthorized");
+        throw new Error("Unauthorized acess");
     }
 
     try{

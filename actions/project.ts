@@ -12,7 +12,7 @@ type CreateProjectType = {
 }
 export async function createProject(data: CreateProjectType) {
     const { userId, orgId } = await auth();
-    if (!userId) throw new Error("unauthorized");
+    if (!userId) throw new Error("unauthorized access");
     if (!orgId) throw new Error("Organization not selected");
 
     const client = await clerkClient();
@@ -49,7 +49,7 @@ export async function deleteProject(projectId: ProjectType['id']) {
     const { userId, orgId, orgRole } = await auth();
 
     if (!userId || !orgId) {
-        throw new Error("Unauthorized");
+        throw new Error("Unauthorized access");
     }
 
     if (orgRole !== "org:admin") {
@@ -79,7 +79,7 @@ export async function getProject(projectId: ProjectType['id']) {
     const { userId, orgId } = await auth();
 
     if (!userId || !orgId) {
-        throw new Error("Unauthorized");
+        throw new Error("Unauthorized access");
     }
 
     try {

@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import useFetch from "@/hooks/use-fetch";
 import { ItemType } from "@/lib/types";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowRight, Command, Plus, Trash, X } from "lucide-react";
+import { ArrowRight, Command, Plus, RefreshCcw, Trash, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -152,6 +152,13 @@ const CreateItem = ({ projectTitle, projectId, items }: CreateItemProps) => {
                     </div>
                 </PopoverContent>
             </Popover>
+
+            <Button
+                onClick={()=>router.refresh()}
+                className="h-12 px-6 rounded-xl font-bold text-[13px] transition-all active:scale-95 flex items-center gap-2 bg-[#1D1D1F] text-white hover:bg-black"
+            >
+                <RefreshCcw size={16} strokeWidth={3} /> Refresh
+            </Button>
         </>
     );
 };

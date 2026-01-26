@@ -61,3 +61,11 @@ export type DetailedIssue = IssueType & {
     reporter: UserType;
     item: ItemType;
 };
+
+export interface ProcessStages {
+    [stageName: string]: number;
+}
+
+export interface ComponentProcessMap {
+    [componentName: string]: ProcessStages;
+  }

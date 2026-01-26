@@ -12,10 +12,12 @@ import { BarLoader } from "react-spinners";
 import IssueCard from "@/components/issue-card";
 import { toast } from "sonner";
 import BoardFilters from "./board-filters";
-import { Plus, CircleDot, ChevronRight, RotateCcw, Activity, ArrowRight } from "lucide-react";
+import { Plus, CircleDot } from "lucide-react";
 import { DetailedIssue, IssueType, ProjectType, SprintType, UserType } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import IssuesTable from "@/components/issues-table";
+import IssueLifecycleDisplay from "@/components/issue-lifecycle-display";
+import Inventory from "@/components/inventory";
 
 
 
@@ -52,6 +54,41 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
 
     const handleFilterChange = (newFilteredIssues: DetailedIssue[]) => {
         setFilteredIssues(newFilteredIssues);
+    };
+
+    const handleIssueUpdate = (updatedItem: DetailedIssue) => {
+        setIssues((prevIssues: DetailedIssue[] | null) => {
+            if (!prevIssues) return null;
+    
+            // Check if this is an update to an existing card or a brand new one (split)
+            const existingIndex = prevIssues.findIndex((i) => i.id === updatedItem.id);
+    
+            if (existingIndex !== -1) {
+                // SCENARIO 1: Simple Update
+                const newIssues = [...prevIssues];
+                newIssues[existingIndex] = updatedItem;
+                return newIssues;
+            } else {
+                // SCENARIO 2: A Split occurred
+                // 1. Find the parent issue and decrease its quantity locally
+                // 2. Add the brand-new issue (the split-off part) to the list
+                const updatedWithParent = prevIssues.map((item) => {
+                    if (item.id === updatedItem.parentId) {
+                        return {
+                            ...item,
+                            quantity: item.quantity - updatedItem.quantity,
+                            isSplit: true,
+                        };
+                    }
+                    return item;
+                });
+    
+                return [...updatedWithParent, updatedItem];
+            }
+        });
+        
+        // Refresh server data in background to keep stats in sync
+        // router.refresh();
     };
 
     const onDragEnd = async (result: DropResult) => {
@@ -139,336 +176,6 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
         );
     }
 
-    // Shared Table Component (used on both mobile and large screens)
-    const IssuesTable = () => (
-        <div className="rounded-3xl overflow-hidden bg-white/70 backdrop-blur-2xl  border border-white/50 animate-in fade-in slide-in-from-bottom-2 duration-700">
-            <div className="overflow-x-auto">
-                <table className="w-full min-w-175">
-                    {/* Header */}
-                    <thead>
-                        <tr className="border-b border-gray-200/50">
-                            <th className="text-left px-8 py-2 text-sm font-semibold text-gray-600 uppercase tracking-wide">
-                                Issue
-                            </th>
-                            <th className="text-left px-8 py-2 text-sm font-semibold text-gray-600 uppercase tracking-wide">
-                                Status
-                            </th>
-                            <th className="text-left px-8 py-2 text-sm font-semibold text-gray-600 uppercase tracking-wide">
-                                Quantity
-                            </th>
-                            <th className="text-left px-8 py-2 text-sm font-semibold text-gray-600 uppercase tracking-wide">
-                                Priority
-                            </th>
-                            <th className="text-left px-8 py-2 text-sm font-semibold text-gray-600 uppercase tracking-wide">
-                                Assignee
-                            </th>
-                        </tr>
-                    </thead>
-
-                    {/* Body */}
-                    <tbody className="divide-y divide-gray-100/60">
-                        {filteredIssues && filteredIssues.length === 0 ? (
-                            <tr>
-                                <td colSpan={4} className="py-4 text-center">
-                                    <div className="max-w-md mx-auto">
-                                        <div className="text-7xl mb-6 text-gray-150">📂</div>
-                                        <p className="text-xl font-medium text-gray-700">All clear</p>
-                                        <p className="text-base text-gray-500 mt-3">
-                                            No issues in this sprint yet. Create one to get started.
-                                        </p>
-                                    </div>
-                                </td>
-                            </tr>
-                        ) : (
-                            filteredIssues?.map((issue) => (
-                                <tr
-                                    key={issue.id}
-                                    className="hover:bg-white/40 transition-all duration-300"
-                                >
-                                    {/* Issue Title */}
-                                    <td className="px-8 py-6">
-                                        <div className="text-base font-medium text-gray-900 leading-snug">
-                                            {issue.item.name}
-                                        </div>
-                                    </td>
-
-                                    {/* Status – Apple-style soft pill */}
-                                    <td className="px-8 py-6">
-                                        <div
-                                            className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium transition-all
-                            ${issue.status === "SALES"
-                                                    ? "bg-green-100/80 text-green-700"
-                                                    : issue.status === "PURCHASE"
-                                                        ? "bg-blue-100/80 text-blue-700"
-                                                        : issue.status === "TODO"
-                                                            ? "bg-purple-100/80 text-purple-700"
-                                                            : "bg-gray-100/80 text-gray-700"
-                                                }`}
-                                        >
-                                            {statuses.find((s) => s.key === issue.status)?.name || issue.status}
-                                        </div>
-                                    </td>
-
-                                    <td className="px-8 py-6">
-                                        <div className="text-base font-medium text-gray-900 leading-snug">
-                                            {issue.quantity}
-                                        </div>
-                                    </td>
-
-                                    {/* Priority – Clean dot + text */}
-                                    <td className="px-8 py-6">
-                                        <div className="flex items-center gap-2.5">
-                                            <div
-                                                className={`w-2.5 h-2.5 rounded-full
-                              ${issue.priority === "URGENT" ? "bg-red-500" :
-                                                        issue.priority === "HIGH" ? "bg-orange-500" :
-                                                            issue.priority === "MEDIUM" ? "bg-amber-500" :
-                                                                "bg-green-500"}`}
-                                            />
-                                            <span className="text-sm font-medium text-gray-700">
-                                                {issue.priority}
-                                            </span>
-                                        </div>
-                                    </td>
-
-                                    {/* Assignee – Elegant avatar + name */}
-                                    <td className="px-8 py-6">
-                                        <div className="flex items-center gap-4">
-                                            {issue.assignee ? (
-                                                <>
-                                                    <div className="relative">
-
-                                                        <Avatar className="h-8 w-8 border border-white/10 rounded-full"><AvatarImage src={issue.assignee.profileImageUrl || ""} /><AvatarFallback className="bg-white font-black">{issue.assignee.name?.[0]}</AvatarFallback></Avatar>
-
-                                                        <div className="absolute inset-0 rounded-2xl ring-4 ring-white/60" />
-                                                    </div>
-                                                    <span className="font-medium text-gray-800">
-                                                        {issue.assignee.name}
-                                                    </span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <div className="w-10 h-10 rounded-2xl bg-gray-200/70 flex items-center justify-center">
-                                                        <span className="text-gray-400 text-lg">◦</span>
-                                                    </div>
-                                                    <span className="text-gray-500 font-medium">Unassigned</span>
-                                                </>
-                                            )}
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    );
-
-    // shared tracking component of life cycle
-
-    const IssueLifecycleDisplay = () => {
-        const MASTER_SEQUENCE = [
-            "TODO", "PURCHASE", "STORE", "BUFFING",
-            "PAINTING", "WINDING", "ASSEMBLY", "PACKING", "SALES"
-        ];
-
-        return (
-            <div className="p-2 font-sans text-[#3D3D3D]">
-                <div className="fixed inset-0 overflow-hidden pointer-events-none">
-                    <div className="absolute top-[-5%] right-[-5%] w-[35%] h-[35%] bg-[#FCEEE9] rounded-full blur-[120px] opacity-40" />
-                </div>
-
-                <div className="relative z-10 max-w-full mx-auto space-y-11">
-                    {filteredIssues && filteredIssues.length === 0 ? (
-                        <div className="p-20 text-center bg-white/60 backdrop-blur-xl rounded-[2.5rem] border border-black/3 shadow-sm">
-                            <p className="text-black/30 font-medium tracking-tight italic">Inventory track is empty.</p>
-                        </div>
-                    ) : (
-                        filteredIssues?.map((issue) => {
-                            const trackHistory = issue.track ?? [];
-
-                            return (
-                                <div key={issue.id} className="animate-in fade-in slide-in-from-bottom-2 duration-700">
-                                    <div className="flex items-end justify-between px-4 mb-2">
-                                        <div className="space-y-1">
-                                            <h2 className="text-2xl font-semibold tracking-tight text-[#1D1D1F]">
-                                                {issue.item.name}
-                                            </h2>
-                                        </div>
-                                    </div>
-                                    <div className="relative p-2 rounded-[2.5rem] bg-white/40 backdrop-blur-2xl border border-white shadow-[0_20px_40px_rgba(0,0,0,0.03)] overflow-x-auto no-scrollbar">
-                                        <div className="flex items-center p-2 gap-2 min-w-max">
-                                            {trackHistory.map((status, idx) => {
-                                                const isLast = idx === trackHistory.length - 1;
-                                                const isRepeat = trackHistory.slice(0, idx).includes(status);
-                                                const seqOrder = MASTER_SEQUENCE.indexOf(status) + 1;
-
-                                                return (
-                                                    <div key={`${status}-${idx}`} className="flex items-center gap-3">
-                                                        <div className={`
-                                  relative min-w-47.5 p-2 rounded-[1.8rem] transition-all duration-500
-                                  border shadow-sm
-                                  ${isLast
-                                                                ? 'bg-white border-[#F2E8E4] scale-105 z-20 shadow-[0_12px_24px_rgba(0,0,0,0.05)]'
-                                                                : isRepeat
-                                                                    ? 'bg-[#FDFBF9] border-[#EAE2DF]'
-                                                                    : 'bg-white/40 border-transparent hover:border-black/5'}
-                                `}>
-
-                                                            {/* Entry Indicator */}
-                                                            <div className="flex justify-between items-center mb-4">
-                                                                <span className={`text-[9px] font-black tracking-widest ${isLast ? 'text-[#FF7A51]' : 'text-black/20'}`}>
-                                                                    STEP {idx + 1}
-                                                                </span>
-                                                                {isRepeat && (
-                                                                    <div className="flex items-center gap-1 px-1.5 py-0.5 bg-[#FFF4F0] rounded-md border border-[#FCEEE9]">
-                                                                        <RotateCcw size={10} className="text-[#FF7A51]" />
-                                                                        <span className="text-[8px] font-bold text-[#FF7A51]">REVISIT</span>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                            <h3 className={`text-[13px] font-bold tracking-tight uppercase mb-1 ${isLast ? 'text-black' : 'text-black/60'}`}>
-                                                                {status}
-                                                            </h3>
-                                                            <div className="flex items-center gap-1.5">
-                                                                <div className={`w-1 h-1 rounded-full ${isLast ? 'bg-[#FF7A51]' : 'bg-black/10'}`} />
-                                                                <span className="text-[10px] font-medium text-black/30">
-                                                                    Phase {seqOrder}
-                                                                </span>
-                                                            </div>
-                                                            {isLast && (
-                                                                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-[#FF7A51] rounded-full blur-[2px]" />
-                                                            )}
-                                                        </div>
-                                                        {!isLast && (
-                                                            <ArrowRight className="text-black shrink-0" size={16} strokeWidth={1.5} />
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-
-                                    {/* UX Summary Bar */}
-                                    <div className="mt-5 px-6 flex items-center justify-between">
-                                        <div className="flex items-center gap-6">
-                                            <div className="flex items-center gap-2 group">
-                                                <div className="w-2 h-2 rounded-full bg-[#FF7A51] group-hover:animate-ping" />
-                                                <span className="text-[10px] font-bold text-black/40 uppercase tracking-widest">Active Processing</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <Activity size={12} className="text-black/20" />
-                                                <span className="text-[10px] font-bold text-black/40 uppercase tracking-widest">{trackHistory.length} Movement Logs</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="text-[10px] font-medium text-black/30 italic">
-                                            Sequential tracking enabled
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })
-                    )}
-                </div>
-            </div>
-        );
-    };
-
-    // Inventory dashboard
-    const Inventory = () => {
-        const items = [...new Set(filteredIssues?.map(d => d.item.name))];
-        const inventoryDashboard = {};
-        filteredIssues?.forEach(i => {
-            const n = i.item.name;
-            const s = i.status;
-            const q = i.quantity
-            if (!inventoryDashboard[n]) {
-                inventoryDashboard[n] = {};
-            }
-            if (!inventoryDashboard[n][s]) {
-                inventoryDashboard[n][s] = 0;
-            }
-            inventoryDashboard[n][s] += q;
-        });
-
-        //  this is the inventory Dashboard structure
-        //  {
-        //     "TABLE BASE": {
-        //       "Purchase": 40,
-        //       "Store": 30,
-        //       "Buffing": 30
-        //     },
-        //     "GEAR BOX": {
-        //       "Purchase": 20,
-        //       "Assembly": 10
-        //     }
-        //   }
-
-        const STAGE_STYLES = {
-            SALES: "bg-green-100 text-green-700 border-green-200",
-            PURCHASE: "bg-blue-100 text-blue-700 border-blue-200",
-            TODO: "bg-purple-100 text-purple-700 border-purple-200",
-            DEFAULT: "bg-gray-100 text-gray-700 border-gray-200",
-        };
-
-
-        return (
-            <>
-                <div className="rounded-3xl overflow-hidden bg-white/70 backdrop-blur-2xl  border border-white/50 animate-in fade-in slide-in-from-bottom-2 duration-700">
-                    <div className="overflow-x-auto">
-                        <table className="w-full min-w-175">
-                            <thead>
-                                <tr className="border-b border-gray-200/50">
-                                    <th className="text-left px-8 py-2 text-sm font-semibold text-gray-600 uppercase tracking-wide">Item</th>
-                                    {statuses.map(stage => (
-                                        <th
-                                            key={stage.key}
-                                            className={`
-                                 px-6 py-2 text-center text-xs font-semibold uppercase tracking-wider
-                                 rounded-full 
-                                 ${STAGE_STYLES[stage.key] || STAGE_STYLES.DEFAULT}
-                               `}
-                                        >
-                                            {stage.key}
-                                        </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100/60">
-                                {filteredIssues && filteredIssues.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={10} className="py-4 text-center">
-                                            <div className="max-w-md mx-auto">
-                                                <div className="text-7xl mb-6 text-gray-150">📂</div>
-                                                <p className="text-xl font-medium text-gray-700">All clear</p>
-                                                <p className="text-base text-gray-500 mt-3">
-                                                    No issues in this sprint yet. Create one to get started.
-                                                </p>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    items.map(item => (
-                                        <tr key={item} className="hover:bg-white/40 transition-all duration-300">
-                                            <td className="px-8 py-6">{item}</td>
-                                            {statuses.map(stage => (
-                                                <td key={stage.key} className="px-8 py-6">
-                                                    {inventoryDashboard[item]?.[stage.key] ?? 0}
-                                                </td>
-                                            ))}
-                                        </tr>
-                                    )))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </>
-        )
-    }
-
-
     return (
         <div className="space-y-12">
             {/* Sprint Manager */}
@@ -516,15 +223,15 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
                     </TabsList>
                     <TabsContent value="table">
                         {/* Overview Table */}
-                        <IssuesTable />
+                        <IssuesTable filteredIssues={filteredIssues} />
                     </TabsContent>
                     <TabsContent value="cycle">
                         {/* Material LifeCycle */}
-                        <IssueLifecycleDisplay />
+                        <IssueLifecycleDisplay filteredIssues={filteredIssues} />
                     </TabsContent>
                     <TabsContent value="inventory">
                         {/* Inventory */}
-                        <Inventory />
+                        <Inventory filteredIssues={filteredIssues} />
                     </TabsContent>
                 </Tabs>
             ) : (
@@ -602,7 +309,7 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
                                                                                     <IssueCard
                                                                                         issue={issue}
                                                                                         onDelete={() => currentSprint?.id && fetchIssues(currentSprint.id)}
-                                                                                        onUpdate={(updated) => setIssues(prev => prev?.map(i => i.id === updated.id ? { ...i, ...updated } : i) || [])}
+                                                                                        onUpdate={handleIssueUpdate}
                                                                                     />
                                                                                 </div>
                                                                             )}
@@ -625,18 +332,18 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
                         {/* Overview Table */}
                         <div>
                             <h2 className="text-lg font-semibold text-gray-900 mb-5">All Issues</h2>
-                            <IssuesTable />
+                            <IssuesTable filteredIssues={filteredIssues} />
                         </div>
                     </TabsContent>
                     <TabsContent value="cycle">
                         {/* Material LifeCycle */}
-                        <IssueLifecycleDisplay />
+                        <IssueLifecycleDisplay filteredIssues={filteredIssues} />
                     </TabsContent>
                     <TabsContent value="inventory">
                         {/* Inventory dashbaord */}
                         <div>
                             <h2 className="text-lg font-semibold text-gray-900 mb-5">Inventory</h2>
-                            <Inventory />
+                            <Inventory filteredIssues={filteredIssues} />
                         </div>
                     </TabsContent>
                 </Tabs>

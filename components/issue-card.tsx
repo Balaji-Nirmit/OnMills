@@ -17,7 +17,7 @@ interface IssueCardProps {
   issue: DetailedIssue;
   showStatus?: boolean;
   onDelete?: () => void;
-  onUpdate?: (updated: IssueType) => void;
+  onUpdate?: (updated: DetailedIssue) => void;
 }
 
 export default function IssueCard({ issue, showStatus = false, onDelete = () => { }, onUpdate = () => { } }: IssueCardProps) {

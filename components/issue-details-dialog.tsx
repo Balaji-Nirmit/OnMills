@@ -36,7 +36,7 @@ type Props = {
     onClose: () => void;
     issue: DetailedIssue;
     onDelete?: () => void;
-    onUpdate?: (updated: IssueType) => void;
+    onUpdate?: (updated: DetailedIssue) => void;
     borderCol?: string;
 }
 
@@ -83,7 +83,6 @@ export default function IssueDetailsDialog({
         const newTrack = [...track, newStatus];
         setTrack(newTrack);
         updateIssueFn(issue.id, { status: newStatus, priority, assigneeId, track: newTrack, quantity });
-        router.refresh()
     };
 
     const handlePriorityChange = async (newPriority: IssueType['priority']) => {
@@ -198,7 +197,7 @@ export default function IssueDetailsDialog({
                             </label>
                             <div className="flex justify-center items-center gap-2">
 
-                                <Input value={quantity} type="number" max={issue.quantity} onChange={(e) => setQuantity(parseInt(e.target.value))} />
+                                <Input value={quantity} type="number" max={issue.quantity} min={1} onChange={(e) => setQuantity(parseInt(e.target.value))} />
                                 <span>{issue.unit}</span>
                             </div>
                         </div>

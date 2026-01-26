@@ -9,7 +9,7 @@ export async function createItem(projectId: ProjectType['id'], itemName: ItemTyp
     const { userId, orgId } = await auth();
 
     if (!userId || !orgId) {
-        throw new Error("Unauthorized");
+        throw new Error("Unauthorized access");
     }
 
     try{
@@ -34,7 +34,7 @@ export async function getProjectItems(projectId: ProjectType['id']) {
     const { userId, orgId } = await auth();
 
     if (!userId || !orgId) {
-        throw new Error("Unauthorized");
+        throw new Error("Unauthorized access");
     }
 
     try{
@@ -55,7 +55,7 @@ export async function getProjectItems(projectId: ProjectType['id']) {
 export async function deleteItem(itemId: ItemType['id'], projectId: ProjectType['id']) {
     const { userId, orgId } = await auth();
     if (!userId || !orgId) {
-        throw new Error("Unauthorized")
+        throw new Error("Unauthorized access")
     }
     try{
         const user = await db.select().from(userTable).where(eq(userTable.clerkId, userId));
