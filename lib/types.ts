@@ -70,3 +70,5 @@ export interface ProcessStages {
 export interface ComponentProcessMap {
     [componentName: string]: ProcessStages;
   }
+
+  export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
