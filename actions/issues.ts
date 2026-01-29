@@ -154,7 +154,7 @@ export async function updateIssue(
         priority: IssueType['priority'], 
         assigneeId: IssueType['assigneeId'], 
         track: IssueType['track'], 
-        quantity: number // This is the quantity being MOVED/SPLIT
+        quantity: number 
     }
 ) {
     const { userId, orgId } = await auth();
@@ -165,7 +165,7 @@ export async function updateIssue(
 
     try {
         return await db.transaction(async (tx) => {
-            // 1. Fetch current state to check permissions and available quantity
+            // 1. Fetch current state
             const issue = await tx.query.issues.findFirst({
                 where: eq(issues.id, issueId),
                 with: { project: true }
@@ -177,13 +177,22 @@ export async function updateIssue(
             const currentQty = issue.quantity;
             const moveQty = data.quantity;
 
-            // 2. CHECK: If moving more than available
             if (moveQty > currentQty) {
-                throw new Error("Insufficient quantity in this batch to split.");
+                throw new Error("Insufficient quantity available.");
             }
 
-            // 3. CASE A: Moving the WHOLE batch (Standard Update)
+            // 2. CHECK: If the status is 'DONE' (or your 'SOLD' status), handle consumption
+            const isSelling = data.status === 'SALES'; // Change this to 'SOLD' if that is your key
+
+            // 3. CASE A: Consuming/Moving the WHOLE batch
             if (moveQty === currentQty) {
+                if (isSelling) {
+                    // If sold out completely, delete the record
+                    await tx.delete(issues).where(eq(issues.id, issueId));
+                    return { id: issueId, deleted: true }; 
+                }
+
+                // Standard full-batch update
                 await tx.update(issues).set({
                     status: data.status,
                     priority: data.priority,
@@ -198,32 +207,43 @@ export async function updateIssue(
                 });
             }
 
-            // 4. CASE B: SPLITTING (Partial quantity move)
+            // 4. CASE B: PARTIAL Quantity (Splitting or Partial Sale)
+            
             // Step 1: Reduce the original issue's quantity
+            const remainingQty = currentQty - moveQty;
+            
             await tx.update(issues).set({
-                quantity: currentQty - moveQty, // Remaining amount
-                isSplit:true,
+                quantity: remainingQty,
+                isSplit: true,
                 updatedAt: new Date(),
             }).where(eq(issues.id, issueId));
 
-            // Step 2: Create a NEW issue for the moved quantity
+            // Step 2: If we are NOT selling, create a new split issue record
+            // If we ARE selling partial, we just let the original reduce (above) and return the updated original
+            if (isSelling) {
+                return await tx.query.issues.findFirst({
+                    where: eq(issues.id, issueId),
+                    with: { assignee: true, reporter: true, item: true },
+                });
+            }
+
+            // Standard Split Logic (for moving to next production phase)
             const [newSplitIssue] = await tx.insert(issues).values({
                 itemId: issue.itemId,
                 description: issue.description,
                 projectId: issue.projectId,
-                reporterId: issue.reporterId, // Keep original reporter
-                assigneeId: data.assigneeId,  // New assignee for this phase
+                reporterId: issue.reporterId,
+                assigneeId: data.assigneeId,
                 sprintId: issue.sprintId,
-                status: data.status,          // New status (e.g., PAINTING)
+                status: data.status,
                 priority: data.priority,
-                order: issue.order,           // Usually placed in same order or end
-                quantity: moveQty,            // The 40 or 60 being moved
-                parentId: issue.id,           // Link to source
+                order: issue.order,
+                quantity: moveQty,
+                parentId: issue.id,
                 isSplit: false,
                 track: [...issue.track, data.status],
             }).returning();
 
-            // Return the new split issue (the one that moved)
             return await tx.query.issues.findFirst({
                 where: eq(issues.id, newSplitIssue.id),
                 with: { assignee: true, reporter: true, item: true },
