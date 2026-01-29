@@ -113,7 +113,7 @@ export default function CreateSprint({
                 </div>
 
                 {/* Actions Hub (Sprint & Items) */}
-                <div className="flex items-center justify-center gap-3 w-full lg:w-auto">
+                <div className="flex items-center justify-center gap-3 w-full lg:w-auto flex-wrap">
                     <Dialog open={open} onOpenChange={setOpen}>
                         <DialogTrigger asChild>
                             <Button className="h-12 px-6 rounded-xl font-bold text-[13px] transition-all active:scale-95 flex items-center gap-2 bg-[#1D1D1F] text-white hover:bg-black shadow-lg shadow-black/5">
@@ -213,7 +213,7 @@ export default function CreateSprint({
                     </Dialog>
                     
                     {/* Integrated Item Creation */}
-                    {/* <div className="shrink-0"> */}
+                    {/* <div className="flex items-center gap-3 flex-wrap"> */}
                         <CreateItem 
                             projectTitle={projectTitle} 
                             projectId={projectId} 

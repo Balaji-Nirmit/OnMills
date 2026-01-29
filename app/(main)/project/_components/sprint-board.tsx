@@ -234,7 +234,7 @@ const SprintBoard = ({ sprints, projectId, orgId, statuses }: Props) => {
                     </TabsContent>
                     <TabsContent value="cycle">
                         {/* Material LifeCycle */}
-                        <IssueLifecycleDisplay filteredIssues={filteredIssues} />
+                        <IssueLifecycleDisplay statuses={statuses} filteredIssues={filteredIssues} />
                     </TabsContent>
                     <TabsContent value="inventory">
                         {/* Inventory */}
@@ -345,7 +345,7 @@ const SprintBoard = ({ sprints, projectId, orgId, statuses }: Props) => {
                     </TabsContent>
                     <TabsContent value="cycle">
                         {/* Material LifeCycle */}
-                        <IssueLifecycleDisplay filteredIssues={filteredIssues} />
+                        <IssueLifecycleDisplay statuses={statuses} filteredIssues={filteredIssues} />
                     </TabsContent>
                     <TabsContent value="inventory">
                         {/* Inventory dashbaord */}

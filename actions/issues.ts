@@ -60,6 +60,7 @@ export async function createIssue(projectId:ProjectType['id'], data:CreateIssueD
             order: newOrder,
             quantity: data.quantity,
             unit: data.unit,
+            track:[data.status],
         }).returning().then(res => res[0])
     
         return issue;
@@ -80,7 +81,6 @@ export async function getIssuesForSprint(sprintId:SprintType['id']) {
         const issuesdata = await db.query.issues.findMany({
             where: eq(issues.sprintId,sprintId),
             orderBy:[
-                asc(issues.statusId),
                 desc(issues.order),
             ],
             with:{
