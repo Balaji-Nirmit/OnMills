@@ -3,9 +3,10 @@ import { getProject } from "@/actions/project";
 import { notFound } from "next/navigation";
 import CreateSprint from "../_components/create-sprint";
 import SprintBoard from "../_components/sprint-board";
-import { BarChart3, Clock, Target, Layers } from "lucide-react";
+import { Target, Layers, Box, TicketCheck } from "lucide-react";
 import { ProjectType } from "@/lib/types";
-import CreateItem from "../_components/create-item";
+import { getProjectItems } from "@/actions/items";
+import { getProjectStatus } from "@/actions/status";
 
 type Props={
   params: Promise<{projectId:ProjectType['id']}>
@@ -14,6 +15,8 @@ type Props={
 const Project = async ({ params }:Props) => {
   const { projectId } = await params;
   const project = await getProject(projectId);
+  const projectItems = await getProjectItems(projectId);
+  const projectStages = await getProjectStatus(projectId);
 
   if (!project) {
     notFound();
@@ -22,18 +25,20 @@ const Project = async ({ params }:Props) => {
   // Calculate high-level stats for the Apple-style header strip
   const totalSprints = project.sprints?.length || 0;
   const activeSprints = project.sprints?.filter(s => s.status === "ACTIVE").length || 0;
+  const completedSprints = project.sprints?.filter(s => s.status === "COMPLETED").length || 0;
+  const totalItems =  projectItems.length || 0;
 
   return (
-    <div className="min-h-screen bg-[#FAF9F6]">
-      <main className="max-w-400 mx-auto px-8 py-10">
+    <div className="min-h-screen bg-[#FAF9F6] overflow-x-hidden">
+      <main className="max-w-400 mx-auto px-2 sm:px-8 py-10">
         
         {/* 1. PROJECT METADATA STRIP */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-10">
           {[
             { label: "Total Batches", value: totalSprints, icon: Layers, color: "text-[#FF7A5C]" },
+            { label: "Batches Completed", value: completedSprints, icon: TicketCheck, color: "text-[#AF52DE]" },
             { label: "Active Nodes", value: activeSprints, icon: Target, color: "text-[#34C759]" },
-            // { label: "Lead Time", value: "14d Avg", icon: Clock, color: "text-[#007AFF]" },
-            // { label: "Efficiency", value: "94%", icon: BarChart3, color: "text-[#AF52DE]" },
+            { label: "Total Items", value: totalItems, icon: Box, color: "text-[#007AFF]" },
           ].map((stat, i) => (
             <div key={i} className="bg-white border border-[#F2F0EB] p-5 rounded-[24px] flex items-center gap-4 shadow-sm">
               <div className={`p-3 rounded-2xl bg-[#FAF9F6] ${stat.color}`}>
@@ -58,13 +63,15 @@ const Project = async ({ params }:Props) => {
             projectId={projectId}
             projectKey={project.key}
             sprintKey={totalSprints + 1}
+            projectItems = {projectItems}
+            projectStages = {projectStages}
           />
         </section>
 
         {/* NEW SECTION (Item creation) */}
-        <section className="mb-12">
-          <CreateItem projectTitle={project.name} projectId={projectId}/>
-        </section>
+        {/* <section className="mb-12">
+          <CreateItem projectTitle={project.name} projectId={projectId} items = {projectItems}/>
+        </section> */}
 
         {/* 3. OPERATIONAL LAYER (The Board) */}
         <section className="relative">
@@ -81,6 +88,7 @@ const Project = async ({ params }:Props) => {
                   sprints={project.sprints}
                   projectId={projectId}
                   orgId={project.organizationId}
+                  statuses = {projectStages}
                 />}
              </div>
           </div>

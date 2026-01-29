@@ -1,18 +1,18 @@
 "use server"
 import { db } from "@/database/drizzle";
-import { projectTable, userTable } from "@/database/schema";
+import { projectStatusTable, projectTable, userTable } from "@/database/schema";
 import { ProjectType } from "@/lib/types";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 
-type CreateProjectType={
+type CreateProjectType = {
     name: ProjectType['name'],
-    key:ProjectType['key'],
+    key: ProjectType['key'],
     description: ProjectType['description'],
 }
-export async function createProject(data:CreateProjectType) {
+export async function createProject(data: CreateProjectType) {
     const { userId, orgId } = await auth();
-    if (!userId) throw new Error("unauthorized");
+    if (!userId) throw new Error("unauthorized access");
     if (!orgId) throw new Error("Organization not selected");
 
     const client = await clerkClient();
@@ -20,7 +20,6 @@ export async function createProject(data:CreateProjectType) {
         organizationId: orgId
     });
 
-    // Use optional chaining (?.) to safely access userId
     const userMembership = membershipList.find(
         (membership) => membership.publicUserData?.userId === userId
     );
@@ -30,76 +29,103 @@ export async function createProject(data:CreateProjectType) {
     }
 
     try {
-        // Drizzle insert with returning()
-        const [project] = await db.insert(projectTable).values({
-            name: data.name,
-            key: data.key,
-            description: data.description,
-            organizationId: orgId
-        }).returning();
+        // Use a transaction to ensure both project and stages are created together
+        const newProject = await db.transaction(async (tx) => {
+            // 1. Create the project
+            const [project] = await tx.insert(projectTable).values({
+                name: data.name,
+                key: data.key,
+                description: data.description,
+                organizationId: orgId
+            }).returning();
 
-        return project;
+            // 2. Define the "Sandwich" stages
+            // We use gaps in 'order' (0, 10, 20... 1000) to allow middle stages later
+            const defaultStages = [
+                { name: "TODO", key: "TODO", order: 0, projectId: project.id },
+                { name: "PURCHASE",key: "PURCHASE", order: 1, projectId: project.id },
+                { name: "STORE",key: "STORE", order: 2, projectId: project.id },
+                { name: "SALES",key: "SALES", order: 101, projectId: project.id },
+            ];
+
+            // 3. Insert the stages
+            await tx.insert(projectStatusTable).values(defaultStages);
+
+            return project;
+        });
+
+        return newProject;
     } catch (error: any) {
-        throw new Error("Error creating project: " + error.message);
+        console.error("Project Creation Error:", error);
+        throw new Error(error.message || "Error creating project");
     }
 }
 
 
-export async function deleteProject(projectId:ProjectType['id']) {
+export async function deleteProject(projectId: ProjectType['id']) {
     const { userId, orgId, orgRole } = await auth();
 
     if (!userId || !orgId) {
-        throw new Error("Unauthorized");
+        throw new Error("Unauthorized access");
     }
 
     if (orgRole !== "org:admin") {
         throw new Error("Only organization admins can delete projects");
     }
 
-    const project = await db.select().from(projectTable).where(eq(projectTable.id, projectId))
+    try {
+        const project = await db.select().from(projectTable).where(eq(projectTable.id, projectId))
 
-    if (!project || project[0].organizationId !== orgId) {
-        throw new Error(
-            "Project not found or you don't have permission to delete it"
-        );
+        if (!project || project[0].organizationId !== orgId) {
+            throw new Error(
+                "Project not found or you don't have permission to delete it"
+            );
+        }
+
+        await db.delete(projectTable).where(eq(projectTable.id, projectId))
+
+        return { success: true };
+    } catch (error) {
+        throw new Error("Error deleting project")
     }
 
-    await db.delete(projectTable).where(eq(projectTable.id, projectId))
-
-    return { success: true };
 }
 
 
-export async function getProject(projectId:ProjectType['id']) {
+export async function getProject(projectId: ProjectType['id']) {
     const { userId, orgId } = await auth();
 
     if (!userId || !orgId) {
-        throw new Error("Unauthorized");
+        throw new Error("Unauthorized access");
     }
 
-    // Find user to verify existence
-    const user = await db.select().from(userTable).where(eq(userTable.clerkId, userId));
+    try {
+        // Find user to verify existence
+        const user = await db.select().from(userTable).where(eq(userTable.clerkId, userId));
 
 
-    if (!user) {
-        throw new Error("User not found");
-    }
-
-    const project = await db.query.projectTable.findFirst({
-        where: eq(projectTable.id, projectId),
-        with: {
-            sprints: {
-                orderBy: (sprints, { asc }) => [asc(sprints.startDate)],
-            },
+        if (!user) {
+            throw new Error("User not found");
         }
-    })
-    if (!project) {
-        throw new Error("Project not found");
-    }
 
-    // Verify project belongs to the organization
-    if (project.organizationId !== orgId) {
-        return null;
+        const project = await db.query.projectTable.findFirst({
+            where: eq(projectTable.id, projectId),
+            with: {
+                sprints: {
+                    orderBy: (sprints, { asc }) => [asc(sprints.startDate)],
+                },
+            }
+        })
+        if (!project) {
+            throw new Error("Project not found");
+        }
+
+        // Verify project belongs to the organization
+        if (project.organizationId !== orgId) {
+            return null;
+        }
+        return project;
+    }catch(error){
+        throw new Error("Error fetching project")
     }
-    return project;
 }

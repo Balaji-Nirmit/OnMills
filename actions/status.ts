@@ -1,11 +1,11 @@
 "use server"
 import { db } from "@/database/drizzle";
-import { itemTable, projectTable, userTable } from "@/database/schema";
-import { ItemType, ProjectType } from "@/lib/types";
+import { projectStatusTable, projectTable, userTable } from "@/database/schema";
+import { ProjectStatusType, ProjectType } from "@/lib/types";
 import { auth } from "@clerk/nextjs/server";
 import { and, eq } from "drizzle-orm";
 
-export async function createItem(projectId: ProjectType['id'], itemName: ItemType['name'], itemReorderValue: ItemType['reorderValue']) {
+export async function createProjectStatus(projectId: ProjectType['id'], projectStatusName: ProjectStatusType['name'], projectStatusOrder: ProjectStatusType['order']) {
     const { userId, orgId } = await auth();
 
     if (!userId || !orgId) {
@@ -19,19 +19,20 @@ export async function createItem(projectId: ProjectType['id'], itemName: ItemTyp
             throw new Error("Project not found");
         }
     
-        const item = await db.insert(itemTable).values({
-            name: itemName,
-            reorderValue: itemReorderValue,
+        const projectStatus = await db.insert(projectStatusTable).values({
+            name: projectStatusName,
+            key: projectStatusName,
+            order: projectStatusOrder,
             projectId: projectId
         }).returning().then(res => res[0]);
-        return item
+        return projectStatus
     }catch(error){
-        throw new Error("Error creating item")
+        throw new Error("Error creating stage")
     }
 
 }
 
-export async function getProjectItems(projectId: ProjectType['id']) {
+export async function getProjectStatus(projectId: ProjectType['id']) {
     const { userId, orgId } = await auth();
 
     if (!userId || !orgId) {
@@ -45,15 +46,15 @@ export async function getProjectItems(projectId: ProjectType['id']) {
             throw new Error("Project not found");
         }
     
-        const items = await db.select().from(itemTable).where(eq(itemTable.projectId, projectId)).orderBy(itemTable.name);
-        return items;
+        const projectStatuss = await db.select().from(projectStatusTable).where(eq(projectStatusTable.projectId, projectId)).orderBy(projectStatusTable.order);
+        return projectStatuss;
     }catch(error){
-        throw new Error("Error fetching project items")
+        throw new Error("Error fetching project projectStatuss")
     }
 
 }
 
-export async function deleteItem(itemId: ItemType['id'], projectId: ProjectType['id']) {
+export async function deleteProjectStatus(projectStatusId: ProjectStatusType['id'], projectId: ProjectType['id']) {
     const { userId, orgId } = await auth();
     if (!userId || !orgId) {
         throw new Error("Unauthorized access")
@@ -64,26 +65,26 @@ export async function deleteItem(itemId: ItemType['id'], projectId: ProjectType[
         if (!user) {
             throw new Error("User not found");
         }
-        const item = await db.query.itemTable.findFirst({
-            where: eq(itemTable.id, itemId),
+        const projectStatus = await db.query.projectStatusTable.findFirst({
+            where: eq(projectStatusTable.id, projectStatusId),
             with: {
                 project: true
             }
         })
-        if (!item) {
+        if (!projectStatus) {
             throw new Error("Issue not found");
         }
     
         // Check if the issue belongs to the user's current organization
-        if (item.project.organizationId !== orgId) {
+        if (projectStatus.project.organizationId !== orgId) {
             throw new Error("You don't have permission to delete this issue");
         }
     
         // await db.issue.delete({ where: { id: issueId } });
-        await db.delete(itemTable).where(and(eq(itemTable.id, itemId),eq(itemTable.projectId,projectId)));
+        await db.delete(projectStatusTable).where(and(eq(projectStatusTable.id, projectStatusId),eq(projectStatusTable.projectId,projectId)));
     
         return { success: true };
     }catch(error){
-        throw new Error("Error deleting items")
+        throw new Error("Error deleting stage")
     }
 }
