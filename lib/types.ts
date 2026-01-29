@@ -7,7 +7,13 @@ export interface UserType {
     createdAt: Date;
     updatedAt: Date;
 }
-
+export interface ProjectStatusType {
+    id: string;
+    projectId: string;
+    name: string;
+    key: string;
+    order: number;
+}
 export interface ProjectType {
     id: string;
     name: string;
@@ -29,11 +35,18 @@ export interface SprintType {
     updatedAt: Date;
 }
 
+export interface ItemType {
+    id: string;
+    name: string;
+    reorderValue: number;
+    projectId: string;
+}
+
 export interface IssueType {
     id: string;
-    title: string;
+    itemId: string;
     description: string | null;
-    status: "TODO" | "PURCHASE" | "STORE" | "BUFFING" | "PAINTING" | "WINDING" | "ASSEMBLY" | "PACKING" | "SALES";
+    statusId: string; // references statusTable.id
     order:number;
     priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
     assigneeId: string | null;
@@ -42,5 +55,27 @@ export interface IssueType {
     sprintId: string | null;
     createdAt: Date;
     updatedAt: Date;
-    track: IssueType["status"][];
+    track: IssueType["statusId"][];
+    quantity: number;
+    unit: 'PIECES' | 'KILOGRAM' | 'UNITS' | 'GRAM' | 'TONNE';
+    parentId: string | null;
+    isSplit: boolean;
 }
+
+export type DetailedIssue = IssueType & {
+    project?: ProjectType;
+    assignee: UserType | null;
+    reporter: UserType;
+    item: ItemType;
+    status: ProjectStatusType;
+};
+
+export interface ProcessStages {
+    [stageName: string]: number;
+}
+
+export interface ComponentProcessMap {
+    [componentName: string]: ProcessStages;
+  }
+
+  export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';

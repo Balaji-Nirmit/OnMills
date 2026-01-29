@@ -1,9 +1,7 @@
 // app/(main)/organization/[orgId]/page.jsx
 import { getOrganization } from '@/actions/organization';
-import OrgSwitcher from "@/components/org-switcher";
 import ProjectList from "./_components/project-list";
 import Link from "next/link";
-import UserIssues from "./_components/user-issues"
 import { auth } from "@clerk/nextjs/server";
 import { 
     Plus, 
@@ -12,11 +10,12 @@ import {
     Zap, 
     Globe, 
     Terminal, 
-    CheckCircle2 
+    CheckCircle2, 
+    Warehouse
 } from "lucide-react";
 import { redirect } from 'next/navigation';
 
-const Organization = async ({ params }) => {
+const Organization = async ({ params }:{params:{orgId:string}}) => {
     const { orgId } = await params;
     const { userId } = await auth();
     
@@ -63,12 +62,12 @@ const Organization = async ({ params }) => {
                     <div className="space-y-6">
                         <div className="flex items-center gap-3">
                             <div className="px-3 py-1 bg-[#1D1D1F] text-white rounded-lg text-[10px] font-black uppercase tracking-[0.2em]">
-                                Root_Workspace
+                            Inventory_Hub
                             </div>
                             <div className="h-4 w-px bg-[#E5E3DD]" />
                             <span className="text-[10px] font-bold text-[#86868B] uppercase tracking-widest flex items-center gap-2">
-                                <Globe size={12} className="text-[#34C759]" />
-                                Global_Network_Active
+                            <Warehouse size={12} className="text-[#34C759]" />
+                            Warehouse_Status_Online
                             </span>
                         </div>
                         <h2 className="text-[56px] md:text-[72px] font-bold tracking-tighter leading-[0.9] text-[#1D1D1F]">
@@ -85,7 +84,7 @@ const Organization = async ({ params }) => {
                             <div className="w-8 h-8 bg-[#FF7A5C] rounded-xl flex items-center justify-center transition-transform group-hover:rotate-90 duration-500">
                                 <Plus size={20} strokeWidth={3} className="text-[#1D1D1F]" />
                             </div>
-                            <span className="text-[16px] font-bold tracking-tight">Deploy New Node</span>
+                            <span className="text-[16px] font-bold tracking-tight">Add New Stock Category</span>
                         </Link>
                     </div>
                 </header>
@@ -98,13 +97,13 @@ const Organization = async ({ params }) => {
                                 <LayoutGrid size={20} className="text-[#FF7A5C]" strokeWidth={2} />
                             </div>
                             <div>
-                                <h3 className="text-[20px] font-bold tracking-tight text-[#1D1D1F]">Project Registry</h3>
+                                <h3 className="text-[20px] font-bold tracking-tight text-[#1D1D1F]">Master Catalog</h3>
                                 <p className="text-[12px] font-bold text-[#86868B] uppercase tracking-widest opacity-60">Active_Operations</p>
                             </div>
                         </div>
                         <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-[#FAF9F6] border border-[#F2F0EB] rounded-full text-[11px] font-bold text-[#86868B]">
                             <Terminal size={14} />
-                            <span>System_Refreshed: {new Date().toLocaleTimeString()}</span>
+                            <span>Catalog_Sync: {new Date().toLocaleTimeString()}</span>
                         </div>
                     </div>
 
@@ -116,7 +115,7 @@ const Organization = async ({ params }) => {
                 </section>
 
                 {/* 3. ASSIGNED TASKS (USER ISSUES) */}
-                <section className="relative">
+                {/* <section className="relative">
                     <div className="flex items-center gap-4 mb-10">
                         <div className="p-3 bg-white rounded-2xl border border-[#F2F0EB] shadow-sm">
                             <Zap size={20} className="text-[#FF7A5C]" strokeWidth={2} />
@@ -131,7 +130,7 @@ const Organization = async ({ params }) => {
                     <div className="bg-white border border-[#F2F0EB] rounded-[48px] p-8 lg:p-12 shadow-sm">
                         <UserIssues userId={userId} />
                     </div>
-                </section>
+                </section> */}
             </main>
         </div>
     );

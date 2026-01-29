@@ -22,8 +22,20 @@ export const sprintSchema = z.object({
 });
 
 export const issueSchema = z.object({
-  title: z.string().min(1, "Title is required"),
+  title: z.uuid("Please select item"),
   assigneeId: z.uuid("Please select assignee"),
   description: z.string().optional(),
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]),
+  quantity: z.number("Please set quantity").gte(1,"Minimum quantity should be 1"),
+  unit: z.enum(["PIECES","KILOGRAM","UNITS","GRAM","TONNE"]),
 });
+
+export const itemSchema = z.object({
+  name: z.string().trim().min(3,"Item title must be at least 3 characters").toUpperCase(),
+  reorderValue: z.number("Must be a number").gte(0,"Reorder value cannot be negative"),
+})
+
+export const statusSchema = z.object({
+  name: z.string().trim().min(3,"Item title must be at least 3 characters").toUpperCase(),
+  order: z.number("Must be a number").gte(3,"Order must be at least 3").lte(100,"Order cannot be more than 100"),
+})

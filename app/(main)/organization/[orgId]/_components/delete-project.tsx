@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react"; // Added useState
 import { Trash2, Loader2 } from "lucide-react";
 import { useOrganization } from "@clerk/nextjs";
 import { deleteProject } from "@/actions/project";
 import { useRouter } from "next/navigation";
 import useFetch from "@/hooks/use-fetch";
 import { ProjectType } from "@/lib/types";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"; // Added Dialog imports
+import { Button } from "@/components/ui/button"; // Added Button for dialog actions
 
 type Props={
   projectId: ProjectType['id']
@@ -24,14 +26,18 @@ export default function DeleteProject({ projectId }:Props) {
 
   const isAdmin = membership?.role === "org:admin";
 
-  const handleDelete = async (e: React.MouseEvent) => {
+  const [deleteOpen, setDeleteOpen] = useState(false); // Added for dialog control
+
+  const handleDeleteClick = (e: React.MouseEvent) => {
     // Prevent navigation if this button is inside a Link/Card
     e.preventDefault();
     e.stopPropagation();
+    setDeleteOpen(true);
+  };
 
-    if (window.confirm("Are you sure you want to delete this project? This action cannot be undone.")) {
-      deleteProjectFn(projectId);
-    }
+  const confirmDelete = async () => {
+    deleteProjectFn(projectId);
+    setDeleteOpen(false);
   };
 
   useEffect(() => {
@@ -45,7 +51,7 @@ export default function DeleteProject({ projectId }:Props) {
   return (
     <div className="flex flex-col items-end gap-2">
       <button
-        onClick={handleDelete}
+        onClick={handleDeleteClick}
         disabled={isDeleting}
         className={`
           group relative flex items-center justify-center 
@@ -77,6 +83,24 @@ export default function DeleteProject({ projectId }:Props) {
           {"Error deleting"}
         </span>
       )}
+
+      {/* Simple Confirmation Dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+          </DialogHeader>
+          <p>Are you sure you want to delete this project? This action cannot be undone.</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete} disabled={isDeleting}>
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

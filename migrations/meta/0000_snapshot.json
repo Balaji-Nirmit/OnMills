@@ -1,5 +1,5 @@
 {
-  "id": "cd69ea28-0ee4-4300-84ef-ed88fcef3125",
+  "id": "27099334-8391-4116-bb5a-97aad8a9bdef",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -15,9 +15,9 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "title": {
-          "name": "title",
-          "type": "text",
+        "item_id": {
+          "name": "item_id",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
@@ -29,8 +29,7 @@
         },
         "status": {
           "name": "status",
-          "type": "issue_status",
-          "typeSchema": "public",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
@@ -84,6 +83,41 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "track": {
+          "name": "track",
+          "type": "uuid[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
+        },
+        "quantity": {
+          "name": "quantity",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "unit": {
+          "name": "unit",
+          "type": "quantity_unit",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PIECES'"
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_split": {
+          "name": "is_split",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         }
       },
       "indexes": {
@@ -107,9 +141,56 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "item_status_idx": {
+          "name": "item_status_idx",
+          "columns": [
+            {
+              "expression": "item_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
+        "issues_item_id_itemTable_id_fk": {
+          "name": "issues_item_id_itemTable_id_fk",
+          "tableFrom": "issues",
+          "tableTo": "itemTable",
+          "columnsFrom": [
+            "item_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "issues_status_project_stages_id_fk": {
+          "name": "issues_status_project_stages_id_fk",
+          "tableFrom": "issues",
+          "tableTo": "project_stages",
+          "columnsFrom": [
+            "status"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
         "issues_assignee_id_userTable_id_fk": {
           "name": "issues_assignee_id_userTable_id_fk",
           "tableFrom": "issues",
@@ -161,10 +242,137 @@
           ],
           "onDelete": "set null",
           "onUpdate": "no action"
+        },
+        "issues_parent_id_issues_id_fk": {
+          "name": "issues_parent_id_issues_id_fk",
+          "tableFrom": "issues",
+          "tableTo": "issues",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.itemTable": {
+      "name": "itemTable",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reorder_value": {
+          "name": "reorder_value",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "itemTable_project_id_projectTable_id_fk": {
+          "name": "itemTable_project_id_projectTable_id_fk",
+          "tableFrom": "itemTable",
+          "tableTo": "projectTable",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.project_stages": {
+      "name": "project_stages",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "order": {
+          "name": "order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "project_stages_project_id_projectTable_id_fk": {
+          "name": "project_stages_project_id_projectTable_id_fk",
+          "tableFrom": "project_stages",
+          "tableTo": "projectTable",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "project_stages_project_id_name_unique": {
+          "name": "project_stages_project_id_name_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "project_id",
+            "name"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -311,15 +519,7 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "sprintTable_name_unique": {
-          "name": "sprintTable_name_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "name"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -409,14 +609,15 @@
         "URGENT"
       ]
     },
-    "public.issue_status": {
-      "name": "issue_status",
+    "public.quantity_unit": {
+      "name": "quantity_unit",
       "schema": "public",
       "values": [
-        "TODO",
-        "IN_PROGRESS",
-        "IN_REVIEW",
-        "DONE"
+        "PIECES",
+        "KILOGRAM",
+        "UNITS",
+        "GRAM",
+        "TONNE"
       ]
     },
     "public.sprint_status": {

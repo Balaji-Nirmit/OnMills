@@ -4,7 +4,7 @@ import { DragDropContext, Draggable, Droppable, DropResult } from "@hello-pangea
 import IssueCreationDrawer from "./create-issue";
 import React, { useEffect, useState } from "react";
 import SprintManager from "./sprint-manager";
-import statuses from "@/data/status.json";
+// import statuses from "@/data/status.json";
 import { Button } from "@/components/ui/button";
 import useFetch from "@/hooks/use-fetch";
 import { getIssuesForSprint, updateIssueOrder } from "@/actions/issues";
@@ -12,29 +12,28 @@ import { BarLoader } from "react-spinners";
 import IssueCard from "@/components/issue-card";
 import { toast } from "sonner";
 import BoardFilters from "./board-filters";
-import { Plus, CircleDot, ChevronRight, RotateCcw, Activity, ArrowRight } from "lucide-react";
-import { IssueType, ProjectType, SprintType, UserType } from "@/lib/types";
+import { Plus, CircleDot } from "lucide-react";
+import { DetailedIssue, IssueType, ProjectStatusType, ProjectType, SprintType, UserType } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import IssuesTable from "@/components/issues-table";
+import IssueLifecycleDisplay from "@/components/issue-lifecycle-display";
+import Inventory from "@/components/inventory";
 
-export type DetailedIssue = IssueType & {
-    project?: ProjectType;
-    assignee: UserType | null;
-    reporter: UserType;
-};
+
 
 type Props = {
     sprints: SprintType[],
     projectId: ProjectType['id'],
     orgId: ProjectType['organizationId']
+    statuses: ProjectStatusType[]
 }
 
-const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
+const SprintBoard = ({ sprints, projectId, orgId, statuses }: Props) => {
     const [currentSprint, setCurrentSprint] = useState<SprintType>(
         sprints.find((spr) => spr.status === "ACTIVE") || sprints[0]
     );
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-    const [selectedStatus, setSelectedStatus] = useState<IssueType['status']>("TODO");
+    const [selectedStatus, setSelectedStatus] = useState<IssueType['statusId']>(statuses[0]["id"]);
     const [isMobile, setIsMobile] = useState(false);
 
     const { loading: issuesLoading, error: issuesError, fn: fetchIssues, data: issues, setData: setIssues } = useFetch<DetailedIssue[], [string]>(getIssuesForSprint);
@@ -58,6 +57,41 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
         setFilteredIssues(newFilteredIssues);
     };
 
+    const handleIssueUpdate = (updatedItem: DetailedIssue) => {
+        setIssues((prevIssues: DetailedIssue[] | null) => {
+            if (!prevIssues) return null;
+    
+            // Check if this is an update to an existing card or a brand new one (split)
+            const existingIndex = prevIssues.findIndex((i) => i.id === updatedItem.id);
+    
+            if (existingIndex !== -1) {
+                // SCENARIO 1: Simple Update
+                const newIssues = [...prevIssues];
+                newIssues[existingIndex] = updatedItem;
+                return newIssues;
+            } else {
+                // SCENARIO 2: A Split occurred
+                // 1. Find the parent issue and decrease its quantity locally
+                // 2. Add the brand-new issue (the split-off part) to the list
+                const updatedWithParent = prevIssues.map((item) => {
+                    if (item.id === updatedItem.parentId) {
+                        return {
+                            ...item,
+                            quantity: item.quantity - updatedItem.quantity,
+                            isSplit: true,
+                        };
+                    }
+                    return item;
+                });
+    
+                return [...updatedWithParent, updatedItem];
+            }
+        });
+        
+        // Refresh server data in background to keep stats in sync
+        // router.refresh();
+    };
+
     const onDragEnd = async (result: DropResult) => {
         // 1. Sprint Status Guards
         if (currentSprint.status === "PLANNED") {
@@ -75,42 +109,49 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
         const { destination, source } = result;
     
         if (
-            !destination || 
+            !destination ||
             (destination.droppableId === source.droppableId && destination.index === source.index)
         ) {
             return;
         }
     
         // 3. Create a deep copy for manipulation
+        // Note: We use map to ensure we have a fresh array of objects to avoid mutating state directly
         const newIssues: DetailedIssue[] = [...issues];
     
         // Filter issues by column
-        const sourceItems = newIssues.filter((i) => i.status === source.droppableId);
-        const destItems = newIssues.filter((i) => i.status === destination.droppableId);
+        const sourceItems = newIssues.filter((i) => i.statusId === source.droppableId);
+        const destItems = newIssues.filter((i) => i.statusId === destination.droppableId);
     
         // 4. Movement Logic
         if (source.droppableId === destination.droppableId) {
             // REORDERING (Same Column)
-            const reordered = Array.from(sourceItems);
-            const [removed] = reordered.splice(source.index, 1);
-            reordered.splice(destination.index, 0, removed);
-            
+            const [removed] = sourceItems.splice(source.index, 1);
+            sourceItems.splice(destination.index, 0, removed);
+    
             // Update local order indices
-            reordered.forEach((item, idx) => {
+            sourceItems.forEach((item, idx) => {
                 item.order = idx;
             });
         } else {
             // MOVING (Cross Column)
             const [movedItem] = sourceItems.splice(source.index, 1);
             
-            const newStatus = destination.droppableId as DetailedIssue["status"];
+            // FIX: Find the actual status object for the destination column
+            // Assuming 'projectStatuses' is available in your component scope
+            const destinationStatus = statuses.find(s => s.id === destination.droppableId);
     
-            // Logic: Update status AND append to history track
-            movedItem.status = newStatus;
-            
-            // Append the new status to the track array
-            // We ensure track is initialized if it's somehow null/undefined
-            movedItem.track = [...(movedItem.track || []), newStatus];
+            if (!destinationStatus) {
+                console.error("Destination status not found");
+                return;
+            }
+    
+            // Logic: Update the Foreign Key ID AND the full Status Object
+            movedItem.statusId = destination.droppableId;
+            movedItem.status = destinationStatus; // This satisfies the 'DetailedIssue' type
+    
+            // Append the new status ID to the track history array
+            movedItem.track = [...(movedItem.track || []), destination.droppableId];
     
             destItems.splice(destination.index, 0, movedItem);
     
@@ -120,16 +161,15 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
         }
     
         // 5. Reconstruct the full list
-        // We map through original issues and replace the ones that were in the affected columns
-        const updated = newIssues.map((item) => {
+        // Ensure the mapped array is explicitly typed as DetailedIssue[]
+        const updated: DetailedIssue[] = newIssues.map((item) => {
             const found = [...sourceItems, ...destItems].find((i) => i.id === item.id);
             return found ? { ...found } : item;
         });
     
         // 6. Update State & DB
-        // Maintain the "Vision Pro" sorting for the lens/filter bar
         const sortedUpdated = updated.sort((a, b) => a.order - b.order);
-        
+    
         setIssues(sortedUpdated);
         updateIssueOrderFn(sortedUpdated);
     };
@@ -142,235 +182,6 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
             </div>
         );
     }
-
-    // Shared Table Component (used on both mobile and large screens)
-    const IssuesTable = () => (
-        <div className="rounded-3xl overflow-hidden bg-white/70 backdrop-blur-2xl  border border-white/50">
-            <div className="overflow-x-auto">
-                <table className="w-full min-w-175">
-                    {/* Header */}
-                    <thead>
-                        <tr className="border-b border-gray-200/50">
-                            <th className="text-left px-8 py-2 text-sm font-semibold text-gray-600 uppercase tracking-wide">
-                                Issue
-                            </th>
-                            <th className="text-left px-8 py-2 text-sm font-semibold text-gray-600 uppercase tracking-wide">
-                                Status
-                            </th>
-                            <th className="text-left px-8 py-2 text-sm font-semibold text-gray-600 uppercase tracking-wide">
-                                Priority
-                            </th>
-                            <th className="text-left px-8 py-2 text-sm font-semibold text-gray-600 uppercase tracking-wide">
-                                Assignee
-                            </th>
-                        </tr>
-                    </thead>
-
-                    {/* Body */}
-                    <tbody className="divide-y divide-gray-100/60">
-                        {filteredIssues && filteredIssues.length === 0 ? (
-                            <tr>
-                                <td colSpan={4} className="py-4 text-center">
-                                    <div className="max-w-md mx-auto">
-                                        <div className="text-7xl mb-6 text-gray-150">📂</div>
-                                        <p className="text-xl font-medium text-gray-700">All clear</p>
-                                        <p className="text-base text-gray-500 mt-3">
-                                            No issues in this sprint yet. Create one to get started.
-                                        </p>
-                                    </div>
-                                </td>
-                            </tr>
-                        ) : (
-                            filteredIssues?.map((issue) => (
-                                <tr
-                                    key={issue.id}
-                                    className="hover:bg-white/40 transition-all duration-300"
-                                >
-                                    {/* Issue Title */}
-                                    <td className="px-8 py-6">
-                                        <div className="text-base font-medium text-gray-900 leading-snug">
-                                            {issue.title}
-                                        </div>
-                                    </td>
-
-                                    {/* Status – Apple-style soft pill */}
-                                    <td className="px-8 py-6">
-                                        <div
-                                            className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium transition-all
-                            ${issue.status === "SALES"
-                                                    ? "bg-green-100/80 text-green-700"
-                                                    : issue.status === "PURCHASE"
-                                                        ? "bg-blue-100/80 text-blue-700"
-                                                        : issue.status === "TODO"
-                                                            ? "bg-purple-100/80 text-purple-700"
-                                                            : "bg-gray-100/80 text-gray-700"
-                                                }`}
-                                        >
-                                            {statuses.find((s) => s.key === issue.status)?.name || issue.status}
-                                        </div>
-                                    </td>
-
-                                    {/* Priority – Clean dot + text */}
-                                    <td className="px-8 py-6">
-                                        <div className="flex items-center gap-2.5">
-                                            <div
-                                                className={`w-2.5 h-2.5 rounded-full
-                              ${issue.priority === "URGENT" ? "bg-red-500" :
-                                                        issue.priority === "HIGH" ? "bg-orange-500" :
-                                                            issue.priority === "MEDIUM" ? "bg-amber-500" :
-                                                                "bg-green-500"}`}
-                                            />
-                                            <span className="text-sm font-medium text-gray-700">
-                                                {issue.priority}
-                                            </span>
-                                        </div>
-                                    </td>
-
-                                    {/* Assignee – Elegant avatar + name */}
-                                    <td className="px-8 py-6">
-                                        <div className="flex items-center gap-4">
-                                            {issue.assignee ? (
-                                                <>
-                                                    <div className="relative">
-
-                                                        <Avatar className="h-8 w-8 border border-white/10 rounded-full"><AvatarImage src={issue.assignee.profileImageUrl || ""} /><AvatarFallback className="bg-white font-black">{issue.assignee.name?.[0]}</AvatarFallback></Avatar>
-
-                                                        <div className="absolute inset-0 rounded-2xl ring-4 ring-white/60" />
-                                                    </div>
-                                                    <span className="font-medium text-gray-800">
-                                                        {issue.assignee.name}
-                                                    </span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <div className="w-10 h-10 rounded-2xl bg-gray-200/70 flex items-center justify-center">
-                                                        <span className="text-gray-400 text-lg">◦</span>
-                                                    </div>
-                                                    <span className="text-gray-500 font-medium">Unassigned</span>
-                                                </>
-                                            )}
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    );
-
-    // shared tracking component of life cycle
-
-    const IssueLifecycleDisplay = () => {
-        const MASTER_SEQUENCE = [
-            "TODO", "PURCHASE", "STORE", "BUFFING",
-            "PAINTING", "WINDING", "ASSEMBLY", "PACKING", "SALES"
-        ];
-
-        return (
-            <div className="p-2 font-sans text-[#3D3D3D]">
-                <div className="fixed inset-0 overflow-hidden pointer-events-none">
-                    <div className="absolute top-[-5%] right-[-5%] w-[35%] h-[35%] bg-[#FCEEE9] rounded-full blur-[120px] opacity-40" />
-                </div>
-
-                <div className="relative z-10 max-w-full mx-auto space-y-11">
-                    {filteredIssues && filteredIssues.length === 0 ? (
-                        <div className="p-20 text-center bg-white/60 backdrop-blur-xl rounded-[2.5rem] border border-black/3 shadow-sm">
-                            <p className="text-black/30 font-medium tracking-tight italic">Inventory track is empty.</p>
-                        </div>
-                    ) : (
-                        filteredIssues?.map((issue) => {
-                            const trackHistory = issue.track ?? [];
-
-                            return (
-                                <div key={issue.id} className="animate-in fade-in slide-in-from-bottom-2 duration-700">
-                                    <div className="flex items-end justify-between px-4 mb-2">
-                                        <div className="space-y-1">
-                                            <h2 className="text-2xl font-semibold tracking-tight text-[#1D1D1F]">
-                                                {issue.title}
-                                            </h2>
-                                        </div>
-                                    </div>
-                                    <div className="relative p-2 rounded-[2.5rem] bg-white/40 backdrop-blur-2xl border border-white shadow-[0_20px_40px_rgba(0,0,0,0.03)] overflow-x-auto no-scrollbar">
-                                        <div className="flex items-center p-2 gap-2 min-w-max">
-                                            {trackHistory.map((status, idx) => {
-                                                const isLast = idx === trackHistory.length - 1;
-                                                const isRepeat = trackHistory.slice(0, idx).includes(status);
-                                                const seqOrder = MASTER_SEQUENCE.indexOf(status) + 1;
-
-                                                return (
-                                                    <div key={`${status}-${idx}`} className="flex items-center gap-3">
-                                                        <div className={`
-                                  relative min-w-47.5 p-2 rounded-[1.8rem] transition-all duration-500
-                                  border shadow-sm
-                                  ${isLast
-                                                                ? 'bg-white border-[#F2E8E4] scale-105 z-20 shadow-[0_12px_24px_rgba(0,0,0,0.05)]'
-                                                                : isRepeat
-                                                                    ? 'bg-[#FDFBF9] border-[#EAE2DF]'
-                                                                    : 'bg-white/40 border-transparent hover:border-black/5'}
-                                `}>
-
-                                                            {/* Entry Indicator */}
-                                                            <div className="flex justify-between items-center mb-4">
-                                                                <span className={`text-[9px] font-black tracking-widest ${isLast ? 'text-[#FF7A51]' : 'text-black/20'}`}>
-                                                                    STEP {idx + 1}
-                                                                </span>
-                                                                {isRepeat && (
-                                                                    <div className="flex items-center gap-1 px-1.5 py-0.5 bg-[#FFF4F0] rounded-md border border-[#FCEEE9]">
-                                                                        <RotateCcw size={10} className="text-[#FF7A51]" />
-                                                                        <span className="text-[8px] font-bold text-[#FF7A51]">REVISIT</span>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                            <h3 className={`text-[13px] font-bold tracking-tight uppercase mb-1 ${isLast ? 'text-black' : 'text-black/60'}`}>
-                                                                {status}
-                                                            </h3>
-                                                            <div className="flex items-center gap-1.5">
-                                                                <div className={`w-1 h-1 rounded-full ${isLast ? 'bg-[#FF7A51]' : 'bg-black/10'}`} />
-                                                                <span className="text-[10px] font-medium text-black/30">
-                                                                    Phase {seqOrder}
-                                                                </span>
-                                                            </div>
-                                                            {isLast && (
-                                                                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-[#FF7A51] rounded-full blur-[2px]" />
-                                                            )}
-                                                        </div>
-                                                        {!isLast && (
-                                                            <ArrowRight className="text-black shrink-0" size={16} strokeWidth={1.5} />
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-
-                                    {/* UX Summary Bar */}
-                                    <div className="mt-5 px-6 flex items-center justify-between">
-                                        <div className="flex items-center gap-6">
-                                            <div className="flex items-center gap-2 group">
-                                                <div className="w-2 h-2 rounded-full bg-[#FF7A51] group-hover:animate-ping" />
-                                                <span className="text-[10px] font-bold text-black/40 uppercase tracking-widest">Active Processing</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <Activity size={12} className="text-black/20" />
-                                                <span className="text-[10px] font-bold text-black/40 uppercase tracking-widest">{trackHistory.length} Movement Logs</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="text-[10px] font-medium text-black/30 italic">
-                                            Sequential tracking enabled
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })
-                    )}
-                </div>
-            </div>
-        );
-    };
-
 
     return (
         <div className="space-y-12">
@@ -411,16 +222,23 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
                             Table
                         </TabsTrigger>
                         <TabsTrigger value="cycle" className="px-7 py-2 text-sm font-medium rounded-full data-[state=active]:bg-black data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-black transition-all">
-                            Material Life Cycle
+                            Life Cycle
+                        </TabsTrigger>
+                        <TabsTrigger value="inventory" className="px-7 py-2 text-sm font-medium rounded-full data-[state=active]:bg-black data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-black transition-all">
+                            Inventory
                         </TabsTrigger>
                     </TabsList>
                     <TabsContent value="table">
                         {/* Overview Table */}
-                        <IssuesTable />
+                        <IssuesTable statuses={statuses} filteredIssues={filteredIssues} />
                     </TabsContent>
                     <TabsContent value="cycle">
                         {/* Material LifeCycle */}
-                        <IssueLifecycleDisplay />
+                        <IssueLifecycleDisplay statuses={statuses} filteredIssues={filteredIssues} />
+                    </TabsContent>
+                    <TabsContent value="inventory">
+                        {/* Inventory */}
+                        <Inventory  statuses={statuses} filteredIssues={filteredIssues} />
                     </TabsContent>
                 </Tabs>
             ) : (
@@ -435,6 +253,9 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
                         <TabsTrigger value="cycle" className="px-7 py-2 text-sm font-medium rounded-full data-[state=active]:bg-black data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-black transition-all">
                             Material Life Cycle
                         </TabsTrigger>
+                        <TabsTrigger value="inventory" className="px-7 py-2 text-sm font-medium rounded-full data-[state=active]:bg-black data-[state=active]:text-white dark:data-[state=active]:bg-white dark:data-[state=active]:text-black transition-all">
+                            Inventory
+                        </TabsTrigger>
                     </TabsList>
                     <TabsContent value="kanban">
                         {/* Kanban Board */}
@@ -444,7 +265,7 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
                                 <div className="inline-flex gap-8 min-w-max">
                                     <DragDropContext onDragEnd={onDragEnd}>
                                         {statuses.map((column) => {
-                                            const columnIssues = filteredIssues?.filter(i => i.status === column.key) || [];
+                                            const columnIssues = filteredIssues?.filter(i => i.statusId === column.id) || [];
                                             return (
                                                 <div key={column.key} className="w-80 shrink-0">
                                                     <div className="flex items-center justify-between mb-5">
@@ -457,7 +278,7 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
                                                         {column.key === "TODO" && currentSprint?.status !== "COMPLETED" && (
                                                             <Button
                                                                 onClick={() => {
-                                                                    setSelectedStatus(column.key as IssueType['status']);
+                                                                    setSelectedStatus(column.id as IssueType['statusId']);
                                                                     setIsDrawerOpen(true);
                                                                 }}
                                                                 size="icon"
@@ -469,7 +290,7 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
                                                         )}
                                                     </div>
 
-                                                    <Droppable droppableId={column.key}>
+                                                    <Droppable droppableId={column.id}>
                                                         {(provided, snapshot) => (
                                                             <div
                                                                 ref={provided.innerRef}
@@ -495,7 +316,8 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
                                                                                     <IssueCard
                                                                                         issue={issue}
                                                                                         onDelete={() => currentSprint?.id && fetchIssues(currentSprint.id)}
-                                                                                        onUpdate={(updated) => setIssues(prev => prev?.map(i => i.id === updated.id ? { ...i, ...updated } : i) || [])}
+                                                                                        onUpdate={handleIssueUpdate}
+                                                                                        statuses = {statuses}
                                                                                     />
                                                                                 </div>
                                                                             )}
@@ -518,12 +340,19 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
                         {/* Overview Table */}
                         <div>
                             <h2 className="text-lg font-semibold text-gray-900 mb-5">All Issues</h2>
-                            <IssuesTable />
+                            <IssuesTable statuses={statuses} filteredIssues={filteredIssues} />
                         </div>
                     </TabsContent>
                     <TabsContent value="cycle">
                         {/* Material LifeCycle */}
-                        <IssueLifecycleDisplay />
+                        <IssueLifecycleDisplay statuses={statuses} filteredIssues={filteredIssues} />
+                    </TabsContent>
+                    <TabsContent value="inventory">
+                        {/* Inventory dashbaord */}
+                        <div>
+                            <h2 className="text-lg font-semibold text-gray-900 mb-5">Inventory</h2>
+                            <Inventory statuses={statuses} filteredIssues={filteredIssues} />
+                        </div>
                     </TabsContent>
                 </Tabs>
 
@@ -533,7 +362,7 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
             {currentSprint && currentSprint.status !== "COMPLETED" && (
                 <Button
                     onClick={() => {
-                        setSelectedStatus("TODO");
+                        setSelectedStatus(statuses[0]['id']);
                         setIsDrawerOpen(true);
                     }}
                     size="icon"

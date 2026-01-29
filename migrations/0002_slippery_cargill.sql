@@ -1,0 +1,2 @@
+ALTER TABLE "projectStatusTable" ADD COLUMN "key" text NOT NULL;--> statement-breakpoint
+ALTER TABLE "projectStatusTable" ADD CONSTRAINT "projectStatusTable_project_id_order_unique" UNIQUE("project_id","order");

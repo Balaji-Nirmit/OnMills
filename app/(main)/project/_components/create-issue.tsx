@@ -26,12 +26,13 @@ import { issueSchema } from "@/app/lib/validators";
 import { X } from "lucide-react";
 import { IssueType, ProjectType, SprintType } from "@/lib/types";
 import { useRouter } from "next/navigation";
+import { getProjectItems } from "@/actions/items";
 
 type Props = {
   isOpen: boolean;
   onClose: () => void;
   sprintId: SprintType["id"] | null;
-  status: IssueType["status"] | null;
+  status: IssueType["statusId"] | null;
   projectId: ProjectType["id"];
   onIssueCreated: () => void;
   orgId: ProjectType["organizationId"];
@@ -61,11 +62,16 @@ export default function IssueCreationDrawer({
   } = useFetch(getOrganizationUsers);
 
   const {
+    fn: fetchItems,
+    data: items,
+  } = useFetch(getProjectItems)
+
+  const {
     control,
     register,
     handleSubmit,
     reset,
-    formState: {errors}
+    formState: { errors }
   } = useForm({
     resolver: zodResolver(issueSchema),
     defaultValues: {
@@ -73,11 +79,16 @@ export default function IssueCreationDrawer({
       priority: "MEDIUM",
       description: "",
       assigneeId: "",
+      quantity: 1,
+      unit: "PIECES",
     },
   });
 
   useEffect(() => {
-    if (isOpen && orgId) fetchUsers(orgId);
+    if (isOpen && orgId) {
+      fetchUsers(orgId)
+      fetchItems(projectId)
+    };
   }, [isOpen, orgId]);
 
   const unlockScreen = () => {
@@ -99,7 +110,7 @@ export default function IssueCreationDrawer({
   const onSubmit = (formData: any) => {
     createIssueFn(projectId, {
       ...formData,
-      status: status || "TODO",
+      status: status,
       sprintId: sprintId || null,
       description: formData.description || null,
     });
@@ -117,9 +128,9 @@ export default function IssueCreationDrawer({
     >
       <DrawerContent className="max-w-2xl mx-auto rounded-t-3xl bg-white dark:bg-gray-900 border-x border-t border-gray-200 dark:border-gray-800 shadow-2xl">
         {/* Drawer Handle */}
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 w-12 h-1 bg-gray-300 dark:bg-gray-600 rounded-full" />
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 w-12 h-1 bg-gray-300 dark:bg-gray-600 rounded-full" />
 
-        <DrawerHeader className="px-8 pt-10 pb-6 border-b border-gray-200 dark:border-gray-800">
+        <DrawerHeader className="px-8 pt-7 pb-6 border-b border-gray-200 dark:border-gray-800">
           <div className="flex items-center justify-between">
             <DrawerTitle className="text-3xl font-bold text-gray-900 dark:text-gray-100">
               Create New Issue
@@ -138,19 +149,75 @@ export default function IssueCreationDrawer({
           </div>
         </DrawerHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="px-8 py-6 space-y-8 overflow-y-auto max-h-[70vh]">
+        <form onSubmit={handleSubmit(onSubmit)} className="px-8 py-2 space-y-8 overflow-y-auto max-h-[70vh]">
           {/* Title */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Title
+              Item name
             </label>
-            <Input
+            {/* <Input
               {...register("title")}
               placeholder="Enter a clear, descriptive title"
               className="h-12 text-lg font-medium border-gray-300 dark:border-gray-700 focus:border-indigo-500 focus:ring-indigo-500 rounded-xl"
+            /> */}
+            <Controller name="title" control={control}
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <SelectTrigger className="h-11 rounded-xl border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <SelectValue placeholder="select item from catalog..." />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-gray-200 dark:border-gray-700 shadow-lg">
+                    {items?.map((item) => (
+                      <SelectItem key={item.id} value={item.id}>
+                        <span className="font-medium">{item?.name || "no item"}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             />
             {errors.title && <p className="text-[#FF7A5C] text-[11px] font-bold mt-1 ml-1 uppercase">{errors.title.message}</p>}
 
+          </div>
+
+
+          <div className="grid grid-cols-2 gap-6">
+
+            {/* quantity */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Quantity
+              </label>
+              <Input id="quantity" {...register("quantity", { valueAsNumber: true })} type="number" placeholder="Enter quantity..." />
+              {errors.quantity && <p className="text-[#FF7A5C] text-[11px] font-bold mt-1 ml-1 uppercase">{errors.quantity.message}</p>}
+            </div>
+
+            {/* unit */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Unit
+              </label>
+              <Controller
+                name="unit"
+                control={control}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger className="h-11 rounded-xl border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-gray-200 dark:border-gray-700 shadow-lg">
+                      {["PIECES", "KILOGRAM", "UNITS", "GRAM", "TONNE"].map((p) => (
+                        <SelectItem key={p} value={p}>
+                          <span>
+                            {p}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
           </div>
 
           {/* Assignee & Priority */}
@@ -177,9 +244,9 @@ export default function IssueCreationDrawer({
                     </SelectContent>
                   </Select>
                 )}
-                
-                />
-                {errors.assigneeId && <p className="text-[#FF7A5C] text-[11px] font-bold mt-1 ml-1 uppercase">{errors.assigneeId.message}</p>}
+
+              />
+              {errors.assigneeId && <p className="text-[#FF7A5C] text-[11px] font-bold mt-1 ml-1 uppercase">{errors.assigneeId.message}</p>}
             </div>
 
             {/* Priority */}
@@ -199,15 +266,14 @@ export default function IssueCreationDrawer({
                       {["LOW", "MEDIUM", "HIGH", "URGENT"].map((p) => (
                         <SelectItem key={p} value={p}>
                           <span
-                            className={`font-medium ${
-                              p === "URGENT"
-                                ? "text-red-600 dark:text-red-400"
-                                : p === "HIGH"
+                            className={`font-medium ${p === "URGENT"
+                              ? "text-red-600 dark:text-red-400"
+                              : p === "HIGH"
                                 ? "text-orange-600"
                                 : p === "MEDIUM"
-                                ? "text-amber-600"
-                                : "text-green-600"
-                            }`}
+                                  ? "text-amber-600"
+                                  : "text-green-600"
+                              }`}
                           >
                             {p}
                           </span>
@@ -246,7 +312,7 @@ export default function IssueCreationDrawer({
           </div>
 
           {/* Submit Button */}
-          <div className="pt-6 pb-8">
+          <div className="pt-6 pb-2">
             <Button
               type="submit"
               disabled={createIssueLoading}

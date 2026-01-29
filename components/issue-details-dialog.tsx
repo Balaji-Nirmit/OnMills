@@ -6,6 +6,8 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
+    DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import MDEditor from "@uiw/react-md-editor";
@@ -23,11 +25,11 @@ import { BarLoader } from "react-spinners";
 import { ExternalLink } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 
-import statuses from "@/data/status.json";
 import { deleteIssue, updateIssue } from "@/actions/issues";
-import { IssueType, UserType } from "@/lib/types";
-import { DetailedIssue } from "@/app/(main)/project/_components/sprint-board";
+import { DetailedIssue, IssueType, ProjectStatusType, UserType } from "@/lib/types";
 import { getOrganizationUsers } from "@/actions/organization";
+import { Input } from "./ui/input";
+import { toast } from "sonner";
 
 const priorityOptions = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 
@@ -36,8 +38,9 @@ type Props = {
     onClose: () => void;
     issue: DetailedIssue;
     onDelete?: () => void;
-    onUpdate?: (updated: IssueType) => void;
+    onUpdate?: (updated: DetailedIssue) => void;
     borderCol?: string;
+    statuses: ProjectStatusType[];
 }
 
 export default function IssueDetailsDialog({
@@ -47,11 +50,19 @@ export default function IssueDetailsDialog({
     onDelete = () => { },
     onUpdate = () => { },
     borderCol = "",
+    statuses
 }: Props) {
-    const [status, setStatus] = useState(issue.status);
+    const [status, setStatus] = useState(issue.statusId);
+    const [statusName, setStatusName] = useState(issue.status.name)
     const [priority, setPriority] = useState(issue.priority);
     const [assigneeId, setAssigneeId] = useState(issue.assigneeId);
-    const [track,setTrack] = useState(issue.track);
+    const [quantity, setQuantity] = useState<number>(issue.quantity);
+    const [track, setTrack] = useState(issue.track);
+
+    // New states for confirmation popups
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isSellDialogOpen, setIsSellDialogOpen] = useState(false);
+
     const { user } = useUser();
     const { organization, membership } = useOrganization();
     const router = useRouter();
@@ -71,31 +82,53 @@ export default function IssueDetailsDialog({
         data: updated,
     } = useFetch(updateIssue);
 
-    const handleDelete = async () => {
-        if (window.confirm("Are you sure you want to delete this issue?")) {
-            deleteIssueFn(issue.id);
-        }
+    const { loading: gettingOrganizationUserLoading, fn: fetchUsers, data: users } = useFetch(getOrganizationUsers);
+
+    // Handlers for confirmation
+    const handleDeleteConfirm = async () => {
+        deleteIssueFn(issue.id);
+        setIsDeleteDialogOpen(false);
     };
 
-    const handleStatusChange = async (newStatus: IssueType['status']) => {
+    const handleSellConfirm = async () => {
+        // According to your server logic, status 'SALES' triggers the sale/consumption
+        const saleStatus = 'SALES'
+        const newTrack = [...track, saleStatus];
+        if(quantity > issue.quantity){
+            toast.error("Insufficient quantity available in this batch.");
+            return
+        }
+        if(quantity == 0){
+            toast.error("Quantity must be at least 1.");
+            return
+        }
+        updateIssueFn(issue.id, {
+            status: saleStatus,
+            priority,
+            assigneeId,
+            track: newTrack,
+            quantity
+        });
+
+        setIsSellDialogOpen(false);
+    };
+
+    const handleStatusChange = async (newStatus: IssueType['statusId']) => {
         setStatus(newStatus);
-        const newTrack = [...track,newStatus];
+        const newTrack = [...track, newStatus];
         setTrack(newTrack);
-        updateIssueFn(issue.id, { status: newStatus, priority, assigneeId, track: newTrack });
+        updateIssueFn(issue.id, { status: newStatus, priority, assigneeId, track: newTrack, quantity });
     };
 
     const handlePriorityChange = async (newPriority: IssueType['priority']) => {
         setPriority(newPriority);
-        updateIssueFn(issue.id, { status, priority: newPriority, assigneeId, track });
+        updateIssueFn(issue.id, { status, priority: newPriority, assigneeId, track, quantity });
     };
 
     const handleAssigneeChange = async (newAssigneeId: UserType['id']) => {
         setAssigneeId(newAssigneeId);
-        updateIssueFn(issue.id, { status, priority, assigneeId: newAssigneeId, track });
+        updateIssueFn(issue.id, { status, priority, assigneeId: newAssigneeId, track, quantity });
     }
-
-    const { loading:gettingOrganizationUserLoading,fn: fetchUsers, data: users } = useFetch(getOrganizationUsers);
-    console.log(organization?.id)
 
     useEffect(() => {
         if (isOpen && organization?.id) {
@@ -104,17 +137,34 @@ export default function IssueDetailsDialog({
     }, [isOpen, organization?.id])
 
     useEffect(() => {
-        if (deleted) {
+        // Handle post-update/delete logic
+        if (deleted || (updated && 'deleted' in updated)) {
             onClose();
             onDelete();
+        } else if (updated) {
+            // updated is likely IssueType (flat)
+            // We need to transform it back to DetailedIssue for the parent state
+            
+            // 1. Find the current status object from the prop
+            const currentStatusObject = statuses.find(s => s.id === updated.statusId);
+            
+            if (currentStatusObject) {
+                // 2. Reconstruct the DetailedIssue shape
+                const reconstructedIssue: DetailedIssue = {
+                    ...issue,        // Keep existing nested objects (item, reporter, project, etc.)
+                    ...updated,      // Overwrite with fresh data from server (statusId, priority, etc.)
+                    status: currentStatusObject // Explicitly set the status object TypeScript is looking for
+                };
+                
+                onUpdate(reconstructedIssue);
+            } else {
+                // Fallback if status isn't found (though it should be)
+                onUpdate(updated as unknown as DetailedIssue);
+            }
         }
-        if (updated) {
-            onUpdate(updated);
-        }
-    }, [deleted, updated, deleteLoading, updateLoading]);
+    }, [deleted, updated, statuses]); // Add statuses to dependency array
 
     const canChange = membership?.role === "org:admin"
-    // user.id === issue.reporter.clerkUserId || membership.role === "org:admin";
 
     const handleGoToProject = () => {
         router.push(`/project/${issue.projectId}?sprint=${issue.sprintId}`);
@@ -123,121 +173,188 @@ export default function IssueDetailsDialog({
     const isProjectPage = !pathname.startsWith("/project/");
 
     return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent>
-                <DialogHeader>
-                    <div className="flex justify-between items-center">
-                        <DialogTitle className="text-3xl">{issue.title}</DialogTitle>
-                        {isProjectPage && (
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={handleGoToProject}
-                                title="Go to Project"
-                            >
-                                <ExternalLink className="h-4 w-4" />
-                            </Button>
-                        )}
-                    </div>
-                </DialogHeader>
-                {(updateLoading || deleteLoading || gettingOrganizationUserLoading) && (
-                    <BarLoader width={"100%"} color="#36d7b7" />
-                )}
-                {issue.project?.name && (
-                    <p className="text-sm font-medium text-gray-600 mt-2">
-                        Project : {issue.project.name}
-                    </p>
-                )}                <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 block">
-                                Status
-                            </label>
-                            <Select value={status} onValueChange={handleStatusChange}>
-                                <SelectTrigger className="w-full h-11 rounded-lg border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                    <SelectValue placeholder="Status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {statuses.map((option) => (
-                                        <SelectItem key={option.key} value={option.key}>
-                                            {option.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+        <>
+            <Dialog open={isOpen} onOpenChange={onClose}>
+                <DialogContent>
+                    <DialogHeader>
+                        <div className="flex justify-between items-center">
+                            <DialogTitle className="text-3xl">{issue.item.name}</DialogTitle>
+                            {isProjectPage && (
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={handleGoToProject}
+                                    title="Go to Project"
+                                >
+                                    <ExternalLink className="h-4 w-4" />
+                                </Button>
+                            )}
                         </div>
-                        <div>
-                            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 block">
-                                Priority
-                            </label>
-                            <Select
-                                value={priority}
-                                onValueChange={handlePriorityChange}
-                                disabled={!canChange}
-                            >
-                                <SelectTrigger className={`w-full h-11 rounded-lg border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${!canChange ? "opacity-70 cursor-not-allowed" : ""
-                                    }`}>
-                                    <SelectValue placeholder="Priority" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {priorityOptions.map((option) => (
-                                        <SelectItem key={option} value={option}>
-                                            {option}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-                    <div>
-                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                            Description
-                        </h4>
-                        <div className="prose prose-sm dark:prose-invert max-w-none bg-gray-50 dark:bg-gray-800/50 rounded-xl p-5 border border-gray-200 dark:border-gray-700">
-                            <MDEditor.Markdown className="bg-transparent! text-slate-700!  max-w-none 
-                     selection:bg-amber-200/50"
-                                source={issue.description || "_No description provided._"}
-                            />
-                        </div>
-                    </div>
-                    <div className="flex justify-between">
-                        <div className="flex flex-col gap-2">
-                            <h4 className="font-semibold">Assignee</h4>
-                            <Select value={assigneeId || undefined} onValueChange={handleAssigneeChange}>
-                                <SelectTrigger className="w-full h-11 rounded-lg border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                    <SelectValue placeholder="Status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {users?.map((option) => (
-                                        <SelectItem key={option.id} value={option.id}>
-                                            <UserAvatar user={option} />
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="flex flex-col gap-2">
-                            <h4 className="font-semibold">Reporter</h4>
-                            <UserAvatar user={issue.reporter} />
-                        </div>
-                    </div>
-                    {canChange && (
-                        <Button
-                            onClick={handleDelete}
-                            disabled={deleteLoading}
-                            variant="destructive"
-                        >
-                            {deleteLoading ? "Deleting..." : "Delete Issue"}
-                        </Button>
+                    </DialogHeader>
+                    {(updateLoading || deleteLoading || gettingOrganizationUserLoading) && (
+                        <BarLoader width={"100%"} color="#36d7b7" />
                     )}
-                    {(deleteError || updateError) && (
-                        <p className="text-red-500">
-                            {/* {deleteError?.message || updateError?.message} */}
-                            Error occured
+                    {issue.project?.name && (
+                        <p className="text-sm font-medium text-gray-600 mt-2">
+                            Project : {issue.project.name}
                         </p>
                     )}
-                </div>
-            </DialogContent>
-        </Dialog>
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 block">
+                                    Status
+                                </label>
+                                <Select value={status} onValueChange={handleStatusChange}>
+                                    <SelectTrigger className="w-full h-11 rounded-lg border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                        <SelectValue placeholder="Status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {statuses.map((option) => (
+                                            <SelectItem key={option.key} value={option.id}>
+                                                {option.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div>
+                                <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 block">
+                                    Priority
+                                </label>
+                                <Select
+                                    value={priority}
+                                    onValueChange={handlePriorityChange}
+                                    disabled={!canChange}
+                                >
+                                    <SelectTrigger className={`w-full h-11 rounded-lg border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${!canChange ? "opacity-70 cursor-not-allowed" : ""
+                                        }`}>
+                                        <SelectValue placeholder="Priority" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {priorityOptions.map((option) => (
+                                            <SelectItem key={option} value={option}>
+                                                {option}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div>
+                                <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 block">
+                                    Quantity
+                                </label>
+                                <div className="flex justify-center items-center gap-2">
+                                    <Input value={quantity} type="number" max={issue.quantity} min={1} onChange={(e) => {
+                                        const val = e.target.value;
+                                        setQuantity(val === "" ? 0 : Number(val));
+                                    }} />
+                                    <span>{issue.unit}</span>
+                                </div>
+                            </div>
+
+                            {statusName === 'SALES' && (
+                                <div>
+                                    <label className="text-sm font-semibold text-gray-400 dark:text-gray-300 mb-2 block">
+                                        Sell item and update
+                                    </label>
+                                    <div>
+                                        <Button
+                                            variant={'outline'}
+                                            className="cursor-pointer"
+                                            onClick={() => setIsSellDialogOpen(true)}
+                                        >
+                                            Sell Item
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+
+                        </div>
+                        <div>
+                            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                                Description
+                            </h4>
+                            <div className="prose prose-sm dark:prose-invert max-w-none bg-gray-50 dark:bg-gray-800/50 rounded-xl p-5 border border-gray-200 dark:border-gray-700">
+                                <MDEditor.Markdown className="bg-transparent! text-slate-700!  max-w-none 
+                         selection:bg-amber-200/50"
+                                    source={issue.description || "_No description provided._"}
+                                />
+                            </div>
+                        </div>
+                        <div className="flex justify-between">
+                            <div className="flex flex-col gap-2">
+                                <h4 className="font-semibold">Assignee</h4>
+                                <Select value={assigneeId || undefined} onValueChange={handleAssigneeChange}>
+                                    <SelectTrigger className="w-full h-11 rounded-lg border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                        <SelectValue placeholder="Status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {users?.map((option) => (
+                                            <SelectItem key={option.id} value={option.id}>
+                                                <UserAvatar user={option} />
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                <h4 className="font-semibold">Reporter</h4>
+                                <UserAvatar user={issue.reporter} />
+                            </div>
+                        </div>
+                        {canChange && (
+                            <Button
+                                onClick={() => setIsDeleteDialogOpen(true)}
+                                disabled={deleteLoading}
+                                variant="destructive"
+                            >
+                                {deleteLoading ? "Deleting..." : "Delete Issue"}
+                            </Button>
+                        )}
+                        {(deleteError || updateError) && (
+                            <p className="text-red-500">
+                                Error occured
+                            </p>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Confirmation Popup */}
+            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <DialogContent className="sm:max-w-106.25">
+                    <DialogHeader>
+                        <DialogTitle>Delete Issue</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete this issue? This action cannot be unSALES.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Cancel</Button>
+                        <Button variant="destructive" onClick={handleDeleteConfirm}>Delete</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Sell Confirmation Popup */}
+            <Dialog open={isSellDialogOpen} onOpenChange={setIsSellDialogOpen}>
+                <DialogContent className="sm:max-w-106.25">
+                    <DialogHeader>
+                        <DialogTitle>Confirm Sale</DialogTitle>
+                        <DialogDescription>
+                            Do you want to process the sale for {quantity} {issue.unit} of this item?
+                            {quantity === issue.quantity ? " This will remove the item from active list." : ""}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsSellDialogOpen(false)}>Cancel</Button>
+                        <Button onClick={handleSellConfirm}>Confirm Sale</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 }
