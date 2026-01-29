@@ -1,11 +1,12 @@
 // Shared Table Component (used on both mobile and large screens)
-import statuses from "@/data/status.json";
+// import statuses from "@/data/status.json";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { DetailedIssue } from "@/lib/types";
+import { DetailedIssue, ProjectStatusType } from "@/lib/types";
 type Prop = {
     filteredIssues:DetailedIssue[] | null
+    statuses:ProjectStatusType[]
 }
-const IssuesTable = ({filteredIssues}:Prop) => (
+const IssuesTable = ({filteredIssues, statuses}:Prop) => (
     <div className="rounded-3xl overflow-hidden bg-white/70 backdrop-blur-2xl  border border-white/50 animate-in fade-in slide-in-from-bottom-2 duration-700">
         <div className="overflow-x-auto">
             <table className="w-full min-w-175">
@@ -61,16 +62,16 @@ const IssuesTable = ({filteredIssues}:Prop) => (
                                 <td className="px-8 py-6">
                                     <div
                                         className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium transition-all
-                        ${issue.status === "SALES"
+                        ${issue.status.name === "SALES"
                                                 ? "bg-green-100/80 text-green-700"
-                                                : issue.status === "PURCHASE"
+                                                : issue.status.name === "PURCHASE"
                                                     ? "bg-blue-100/80 text-blue-700"
-                                                    : issue.status === "TODO"
+                                                    : issue.status.name === "TODO"
                                                         ? "bg-purple-100/80 text-purple-700"
                                                         : "bg-gray-100/80 text-gray-700"
                                             }`}
                                     >
-                                        {statuses.find((s) => s.key === issue.status)?.name || issue.status}
+                                        {statuses.find((s) => s.id === issue.statusId)?.name || issue.statusId}
                                     </div>
                                 </td>
 

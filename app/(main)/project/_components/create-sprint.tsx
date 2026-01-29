@@ -14,10 +14,11 @@ import { format, addDays } from "date-fns";
 import { sprintSchema } from "@/app/lib/validators";
 import useFetch from "@/hooks/use-fetch";
 import { createSprint } from "@/actions/sprints";
-import { ItemType, ProjectType, SprintType } from "@/lib/types";
+import { ItemType, ProjectStatusType, ProjectType, SprintType } from "@/lib/types";
 import { BarLoader } from "react-spinners";
 import "react-day-picker/style.css";
 import CreateItem from "./create-item";
+import CreateStatus from "./create-status";
 
 type Props = {
     projectTitle: ProjectType['name'],
@@ -25,6 +26,7 @@ type Props = {
     projectId: ProjectType['id'],
     sprintKey: number,
     projectItems: ItemType[],
+    projectStages: ProjectStatusType[],
 }
 
 type SprintFormValues = {
@@ -38,7 +40,8 @@ export default function CreateSprint({
     projectKey,
     sprintKey: initialSprintKey,
     projectId,
-    projectItems
+    projectItems,
+    projectStages
 }: Props) {
     const [open, setOpen] = useState(false);
     const [currentSprintKey, setCurrentSprintKey] = useState(initialSprintKey);
@@ -215,6 +218,12 @@ export default function CreateSprint({
                             projectTitle={projectTitle} 
                             projectId={projectId} 
                             items={projectItems}
+                        />
+
+                        <CreateStatus 
+                            projectTitle={projectTitle}
+                            projectId={projectId}
+                            stages={projectStages}
                         />
                     {/* </div> */}
                 </div>

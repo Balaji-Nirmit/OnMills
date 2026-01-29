@@ -6,6 +6,7 @@ import SprintBoard from "../_components/sprint-board";
 import { Target, Layers, Box, TicketCheck } from "lucide-react";
 import { ProjectType } from "@/lib/types";
 import { getProjectItems } from "@/actions/items";
+import { getProjectStatus } from "@/actions/status";
 
 type Props={
   params: Promise<{projectId:ProjectType['id']}>
@@ -15,6 +16,7 @@ const Project = async ({ params }:Props) => {
   const { projectId } = await params;
   const project = await getProject(projectId);
   const projectItems = await getProjectItems(projectId);
+  const projectStages = await getProjectStatus(projectId);
 
   if (!project) {
     notFound();
@@ -62,6 +64,7 @@ const Project = async ({ params }:Props) => {
             projectKey={project.key}
             sprintKey={totalSprints + 1}
             projectItems = {projectItems}
+            projectStages = {projectStages}
           />
         </section>
 
@@ -85,6 +88,7 @@ const Project = async ({ params }:Props) => {
                   sprints={project.sprints}
                   projectId={projectId}
                   orgId={project.organizationId}
+                  statuses = {projectStages}
                 />}
              </div>
           </div>

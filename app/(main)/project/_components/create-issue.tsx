@@ -32,7 +32,7 @@ type Props = {
   isOpen: boolean;
   onClose: () => void;
   sprintId: SprintType["id"] | null;
-  status: IssueType["status"] | null;
+  status: IssueType["statusId"] | null;
   projectId: ProjectType["id"];
   onIssueCreated: () => void;
   orgId: ProjectType["organizationId"];
@@ -110,7 +110,7 @@ export default function IssueCreationDrawer({
   const onSubmit = (formData: any) => {
     createIssueFn(projectId, {
       ...formData,
-      status: status || "TODO",
+      status: status,
       sprintId: sprintId || null,
       description: formData.description || null,
     });

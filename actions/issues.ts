@@ -10,7 +10,7 @@ type CreateIssueDataProp={
     assigneeId: IssueType['assigneeId'] | null,
     priority: IssueType['priority'],
     description?: IssueType['description'],
-    status: IssueType['status'],
+    status: IssueType['statusId'],
     sprintId: SprintType['id'],
     quantity: IssueType['quantity'],
     unit: IssueType['unit']
@@ -27,7 +27,7 @@ export async function createIssue(projectId:ProjectType['id'], data:CreateIssueD
 
         let user = await db.select().from(userTable).where(eq(userTable.clerkId, userId)).then(res => res[0]);
     
-        const lastIssue = await db.select().from(issues).where(and(eq(issues.projectId, projectId), eq(issues.status, data.status))).orderBy(desc(issues.order)).limit(1).then(res => res[0]);
+        const lastIssue = await db.select().from(issues).where(and(eq(issues.projectId, projectId), eq(issues.statusId, data.status))).orderBy(desc(issues.order)).limit(1).then(res => res[0]);
     
         const newOrder = lastIssue ? lastIssue.order + 1 : 0;
     
@@ -51,7 +51,7 @@ export async function createIssue(projectId:ProjectType['id'], data:CreateIssueD
         const issue = await db.insert(issues).values({
             itemId: data.title,
             description: data.description,
-            status: data.status,
+            statusId: data.status,
             priority: data.priority,
             projectId: projectId,
             sprintId: data.sprintId,
@@ -80,13 +80,14 @@ export async function getIssuesForSprint(sprintId:SprintType['id']) {
         const issuesdata = await db.query.issues.findMany({
             where: eq(issues.sprintId,sprintId),
             orderBy:[
-                asc(issues.status),
+                asc(issues.statusId),
                 desc(issues.order),
             ],
             with:{
                 assignee:true,
                 reporter:true,
-                item:true
+                item:true,
+                status:true
             }
         })
     
@@ -150,7 +151,7 @@ export async function deleteIssue(issueId:IssueType['id']) {
 export async function updateIssue(
     issueId: string, 
     data: { 
-        status: IssueType['status'], 
+        status: IssueType['statusId'], 
         priority: IssueType['priority'], 
         assigneeId: IssueType['assigneeId'], 
         track: IssueType['track'], 
@@ -194,7 +195,7 @@ export async function updateIssue(
 
                 // Standard full-batch update
                 await tx.update(issues).set({
-                    status: data.status,
+                    statusId: data.status,
                     priority: data.priority,
                     assigneeId: data.assigneeId,
                     track: data.track,
@@ -235,7 +236,7 @@ export async function updateIssue(
                 reporterId: issue.reporterId,
                 assigneeId: data.assigneeId,
                 sprintId: issue.sprintId,
-                status: data.status,
+                statusId: data.status,
                 priority: data.priority,
                 order: issue.order,
                 quantity: moveQty,
@@ -254,7 +255,7 @@ export async function updateIssue(
     }
 }
 
-export async function updateIssueOrder(updatedIssues:{status:IssueType['status'],order:IssueType['order'], id:IssueType['id'], track:IssueType['status'][]}[]) {
+export async function updateIssueOrder(updatedIssues:{statusId:IssueType['statusId'],order:IssueType['order'], id:IssueType['id'], track:IssueType['statusId'][]}[]) {
     const { userId, orgId } = await auth();
 
     if (!userId || !orgId) {
@@ -265,7 +266,7 @@ export async function updateIssueOrder(updatedIssues:{status:IssueType['status']
         await db.transaction(async (tx) => {
             for (const issue of updatedIssues) {
                 await tx.update(issues).set({
-                    status: issue.status,
+                    statusId: issue.statusId,
                     order: issue.order,
                     track: issue.track,
                     updatedAt: new Date(),

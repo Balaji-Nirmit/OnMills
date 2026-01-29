@@ -1,11 +1,12 @@
 // Inventory dashboard
-import statuses from "@/data/status.json";
-import { ComponentProcessMap, DetailedIssue } from "@/lib/types";
+// import statuses from "@/data/status.json";
+import { ComponentProcessMap, DetailedIssue, ProjectStatusType } from "@/lib/types";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 type Prop = {
     filteredIssues: DetailedIssue[] | null
+    statuses: ProjectStatusType[]
 }
-const Inventory = ({ filteredIssues }: Prop) => {
+const Inventory = ({ filteredIssues, statuses }: Prop) => {
     const items = [...new Set(filteredIssues?.map(d => d.item.name))];
     const inventoryDashboard: ComponentProcessMap = {};
     filteredIssues?.forEach(i => {
@@ -16,23 +17,23 @@ const Inventory = ({ filteredIssues }: Prop) => {
         if (!inventoryDashboard[n]) {
             inventoryDashboard[n] = {};
         }
-        if (!inventoryDashboard[n][s]) {
-            inventoryDashboard[n][s] = 0;
+        if (!inventoryDashboard[n][s['key']]) {
+            inventoryDashboard[n][s['key']] = 0;
             inventoryDashboard[n]["REORDER_VALUE"] = rv;
         }
-        inventoryDashboard[n][s] += q;
+        inventoryDashboard[n][s['key']] += q;
     });
 
     //  this is the inventory Dashboard structure
     //  {
     //     "TABLE BASE": {
-    //       "Purchase": 40,
-    //       "Store": 30,
-    //       "Buffing": 30
+    //       "PURCHASE": 40,
+    //       "STORE": 30,
+    //       "BUFFING": 30
     //     },
     //     "GEAR BOX": {
-    //       "Purchase": 20,
-    //       "Assembly": 10
+    //       "PURCHASE": 20,
+    //       "ASSEMBLY": 10
     //     }
     //   }
 

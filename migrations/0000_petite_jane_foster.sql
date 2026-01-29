@@ -1,12 +1,11 @@
 CREATE TYPE "public"."issue_priority" AS ENUM('LOW', 'MEDIUM', 'HIGH', 'URGENT');--> statement-breakpoint
-CREATE TYPE "public"."issue_status" AS ENUM('TODO', 'PURCHASE', 'STORE', 'BUFFING', 'PAINTING', 'WINDING', 'ASSEMBLY', 'PACKING', 'SALES');--> statement-breakpoint
 CREATE TYPE "public"."quantity_unit" AS ENUM('PIECES', 'KILOGRAM', 'UNITS', 'GRAM', 'TONNE');--> statement-breakpoint
 CREATE TYPE "public"."sprint_status" AS ENUM('PLANNED', 'ACTIVE', 'COMPLETED');--> statement-breakpoint
 CREATE TABLE "issues" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"item_id" uuid NOT NULL,
 	"description" text,
-	"status" "issue_status" NOT NULL,
+	"status" uuid NOT NULL,
 	"order" integer NOT NULL,
 	"priority" "issue_priority" NOT NULL,
 	"assignee_id" uuid,
@@ -15,17 +14,26 @@ CREATE TABLE "issues" (
 	"sprint_id" uuid,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
-	"track" "issue_status"[] DEFAULT '{"TODO"}' NOT NULL,
+	"track" uuid[] DEFAULT '{}' NOT NULL,
 	"quantity" integer DEFAULT 1 NOT NULL,
 	"unit" "quantity_unit" DEFAULT 'PIECES' NOT NULL,
 	"parent_id" uuid,
-	"is_split" boolean DEFAULT false
+	"is_split" boolean DEFAULT false NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "itemTable" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" text NOT NULL,
+	"reorder_value" integer DEFAULT 0 NOT NULL,
 	"project_id" uuid NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "project_stages" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"project_id" uuid NOT NULL,
+	"name" text NOT NULL,
+	"order" integer NOT NULL,
+	CONSTRAINT "project_stages_project_id_name_unique" UNIQUE("project_id","name")
 );
 --> statement-breakpoint
 CREATE TABLE "projectTable" (
@@ -63,12 +71,14 @@ CREATE TABLE "userTable" (
 );
 --> statement-breakpoint
 ALTER TABLE "issues" ADD CONSTRAINT "issues_item_id_itemTable_id_fk" FOREIGN KEY ("item_id") REFERENCES "public"."itemTable"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "issues" ADD CONSTRAINT "issues_status_project_stages_id_fk" FOREIGN KEY ("status") REFERENCES "public"."project_stages"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "issues" ADD CONSTRAINT "issues_assignee_id_userTable_id_fk" FOREIGN KEY ("assignee_id") REFERENCES "public"."userTable"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "issues" ADD CONSTRAINT "issues_reporter_id_userTable_id_fk" FOREIGN KEY ("reporter_id") REFERENCES "public"."userTable"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "issues" ADD CONSTRAINT "issues_project_id_projectTable_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projectTable"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "issues" ADD CONSTRAINT "issues_sprint_id_sprintTable_id_fk" FOREIGN KEY ("sprint_id") REFERENCES "public"."sprintTable"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "issues" ADD CONSTRAINT "issues_parent_id_issues_id_fk" FOREIGN KEY ("parent_id") REFERENCES "public"."issues"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "itemTable" ADD CONSTRAINT "itemTable_project_id_projectTable_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projectTable"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "project_stages" ADD CONSTRAINT "project_stages_project_id_projectTable_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projectTable"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "sprintTable" ADD CONSTRAINT "sprintTable_project_id_projectTable_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projectTable"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "status_order_idx" ON "issues" USING btree ("status","order");--> statement-breakpoint
 CREATE INDEX "item_status_idx" ON "issues" USING btree ("item_id","status");

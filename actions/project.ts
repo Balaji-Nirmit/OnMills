@@ -1,6 +1,6 @@
 "use server"
 import { db } from "@/database/drizzle";
-import { projectTable, userTable } from "@/database/schema";
+import { projectStatusTable, projectTable, userTable } from "@/database/schema";
 import { ProjectType } from "@/lib/types";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
@@ -20,7 +20,6 @@ export async function createProject(data: CreateProjectType) {
         organizationId: orgId
     });
 
-    // Use optional chaining (?.) to safely access userId
     const userMembership = membershipList.find(
         (membership) => membership.publicUserData?.userId === userId
     );
@@ -30,17 +29,35 @@ export async function createProject(data: CreateProjectType) {
     }
 
     try {
-        // Drizzle insert with returning()
-        const [project] = await db.insert(projectTable).values({
-            name: data.name,
-            key: data.key,
-            description: data.description,
-            organizationId: orgId
-        }).returning();
+        // Use a transaction to ensure both project and stages are created together
+        const newProject = await db.transaction(async (tx) => {
+            // 1. Create the project
+            const [project] = await tx.insert(projectTable).values({
+                name: data.name,
+                key: data.key,
+                description: data.description,
+                organizationId: orgId
+            }).returning();
 
-        return project;
+            // 2. Define the "Sandwich" stages
+            // We use gaps in 'order' (0, 10, 20... 1000) to allow middle stages later
+            const defaultStages = [
+                { name: "TODO", key: "TODO", order: 0, projectId: project.id },
+                { name: "PURCHASE",key: "PURCHASE", order: 1, projectId: project.id },
+                { name: "STORE",key: "STORE", order: 2, projectId: project.id },
+                { name: "SALES",key: "SALES", order: 101, projectId: project.id },
+            ];
+
+            // 3. Insert the stages
+            await tx.insert(projectStatusTable).values(defaultStages);
+
+            return project;
+        });
+
+        return newProject;
     } catch (error: any) {
-        throw new Error("Error creating project");
+        console.error("Project Creation Error:", error);
+        throw new Error(error.message || "Error creating project");
     }
 }
 

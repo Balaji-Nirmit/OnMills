@@ -4,7 +4,7 @@ import { DragDropContext, Draggable, Droppable, DropResult } from "@hello-pangea
 import IssueCreationDrawer from "./create-issue";
 import React, { useEffect, useState } from "react";
 import SprintManager from "./sprint-manager";
-import statuses from "@/data/status.json";
+// import statuses from "@/data/status.json";
 import { Button } from "@/components/ui/button";
 import useFetch from "@/hooks/use-fetch";
 import { getIssuesForSprint, updateIssueOrder } from "@/actions/issues";
@@ -13,7 +13,7 @@ import IssueCard from "@/components/issue-card";
 import { toast } from "sonner";
 import BoardFilters from "./board-filters";
 import { Plus, CircleDot } from "lucide-react";
-import { DetailedIssue, IssueType, ProjectType, SprintType, UserType } from "@/lib/types";
+import { DetailedIssue, IssueType, ProjectStatusType, ProjectType, SprintType, UserType } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import IssuesTable from "@/components/issues-table";
 import IssueLifecycleDisplay from "@/components/issue-lifecycle-display";
@@ -25,14 +25,15 @@ type Props = {
     sprints: SprintType[],
     projectId: ProjectType['id'],
     orgId: ProjectType['organizationId']
+    statuses: ProjectStatusType[]
 }
 
-const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
+const SprintBoard = ({ sprints, projectId, orgId, statuses }: Props) => {
     const [currentSprint, setCurrentSprint] = useState<SprintType>(
         sprints.find((spr) => spr.status === "ACTIVE") || sprints[0]
     );
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-    const [selectedStatus, setSelectedStatus] = useState<IssueType['status']>("TODO");
+    const [selectedStatus, setSelectedStatus] = useState<IssueType['statusId']>(statuses[0]["id"]);
     const [isMobile, setIsMobile] = useState(false);
 
     const { loading: issuesLoading, error: issuesError, fn: fetchIssues, data: issues, setData: setIssues } = useFetch<DetailedIssue[], [string]>(getIssuesForSprint);
@@ -101,68 +102,74 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
             toast.warning("Cannot update board after sprint end");
             return;
         }
-
+    
         // 2. Early Exits
         if (isMobile || !currentSprint || !issues) return;
-
+    
         const { destination, source } = result;
-
+    
         if (
             !destination ||
             (destination.droppableId === source.droppableId && destination.index === source.index)
         ) {
             return;
         }
-
+    
         // 3. Create a deep copy for manipulation
+        // Note: We use map to ensure we have a fresh array of objects to avoid mutating state directly
         const newIssues: DetailedIssue[] = [...issues];
-
+    
         // Filter issues by column
-        const sourceItems = newIssues.filter((i) => i.status === source.droppableId);
-        const destItems = newIssues.filter((i) => i.status === destination.droppableId);
-
+        const sourceItems = newIssues.filter((i) => i.statusId === source.droppableId);
+        const destItems = newIssues.filter((i) => i.statusId === destination.droppableId);
+    
         // 4. Movement Logic
         if (source.droppableId === destination.droppableId) {
             // REORDERING (Same Column)
-            const reordered = Array.from(sourceItems);
-            const [removed] = reordered.splice(source.index, 1);
-            reordered.splice(destination.index, 0, removed);
-
+            const [removed] = sourceItems.splice(source.index, 1);
+            sourceItems.splice(destination.index, 0, removed);
+    
             // Update local order indices
-            reordered.forEach((item, idx) => {
+            sourceItems.forEach((item, idx) => {
                 item.order = idx;
             });
         } else {
             // MOVING (Cross Column)
             const [movedItem] = sourceItems.splice(source.index, 1);
-
-            const newStatus = destination.droppableId as DetailedIssue["status"];
-
-            // Logic: Update status AND append to history track
-            movedItem.status = newStatus;
-
-            // Append the new status to the track array
-            // We ensure track is initialized if it's somehow null/undefined
-            movedItem.track = [...(movedItem.track || []), newStatus];
-
+            
+            // FIX: Find the actual status object for the destination column
+            // Assuming 'projectStatuses' is available in your component scope
+            const destinationStatus = statuses.find(s => s.id === destination.droppableId);
+    
+            if (!destinationStatus) {
+                console.error("Destination status not found");
+                return;
+            }
+    
+            // Logic: Update the Foreign Key ID AND the full Status Object
+            movedItem.statusId = destination.droppableId;
+            movedItem.status = destinationStatus; // This satisfies the 'DetailedIssue' type
+    
+            // Append the new status ID to the track history array
+            movedItem.track = [...(movedItem.track || []), destination.droppableId];
+    
             destItems.splice(destination.index, 0, movedItem);
-
+    
             // Re-index both affected columns
             sourceItems.forEach((item, i) => (item.order = i));
             destItems.forEach((item, i) => (item.order = i));
         }
-
+    
         // 5. Reconstruct the full list
-        // We map through original issues and replace the ones that were in the affected columns
-        const updated = newIssues.map((item) => {
+        // Ensure the mapped array is explicitly typed as DetailedIssue[]
+        const updated: DetailedIssue[] = newIssues.map((item) => {
             const found = [...sourceItems, ...destItems].find((i) => i.id === item.id);
             return found ? { ...found } : item;
         });
-
+    
         // 6. Update State & DB
-        // Maintain the "Vision Pro" sorting for the lens/filter bar
         const sortedUpdated = updated.sort((a, b) => a.order - b.order);
-
+    
         setIssues(sortedUpdated);
         updateIssueOrderFn(sortedUpdated);
     };
@@ -223,7 +230,7 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
                     </TabsList>
                     <TabsContent value="table">
                         {/* Overview Table */}
-                        <IssuesTable filteredIssues={filteredIssues} />
+                        <IssuesTable statuses={statuses} filteredIssues={filteredIssues} />
                     </TabsContent>
                     <TabsContent value="cycle">
                         {/* Material LifeCycle */}
@@ -231,7 +238,7 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
                     </TabsContent>
                     <TabsContent value="inventory">
                         {/* Inventory */}
-                        <Inventory filteredIssues={filteredIssues} />
+                        <Inventory  statuses={statuses} filteredIssues={filteredIssues} />
                     </TabsContent>
                 </Tabs>
             ) : (
@@ -258,7 +265,7 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
                                 <div className="inline-flex gap-8 min-w-max">
                                     <DragDropContext onDragEnd={onDragEnd}>
                                         {statuses.map((column) => {
-                                            const columnIssues = filteredIssues?.filter(i => i.status === column.key) || [];
+                                            const columnIssues = filteredIssues?.filter(i => i.statusId === column.id) || [];
                                             return (
                                                 <div key={column.key} className="w-80 shrink-0">
                                                     <div className="flex items-center justify-between mb-5">
@@ -271,7 +278,7 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
                                                         {column.key === "TODO" && currentSprint?.status !== "COMPLETED" && (
                                                             <Button
                                                                 onClick={() => {
-                                                                    setSelectedStatus(column.key as IssueType['status']);
+                                                                    setSelectedStatus(column.id as IssueType['statusId']);
                                                                     setIsDrawerOpen(true);
                                                                 }}
                                                                 size="icon"
@@ -283,7 +290,7 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
                                                         )}
                                                     </div>
 
-                                                    <Droppable droppableId={column.key}>
+                                                    <Droppable droppableId={column.id}>
                                                         {(provided, snapshot) => (
                                                             <div
                                                                 ref={provided.innerRef}
@@ -310,6 +317,7 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
                                                                                         issue={issue}
                                                                                         onDelete={() => currentSprint?.id && fetchIssues(currentSprint.id)}
                                                                                         onUpdate={handleIssueUpdate}
+                                                                                        statuses = {statuses}
                                                                                     />
                                                                                 </div>
                                                                             )}
@@ -332,7 +340,7 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
                         {/* Overview Table */}
                         <div>
                             <h2 className="text-lg font-semibold text-gray-900 mb-5">All Issues</h2>
-                            <IssuesTable filteredIssues={filteredIssues} />
+                            <IssuesTable statuses={statuses} filteredIssues={filteredIssues} />
                         </div>
                     </TabsContent>
                     <TabsContent value="cycle">
@@ -343,7 +351,7 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
                         {/* Inventory dashbaord */}
                         <div>
                             <h2 className="text-lg font-semibold text-gray-900 mb-5">Inventory</h2>
-                            <Inventory filteredIssues={filteredIssues} />
+                            <Inventory statuses={statuses} filteredIssues={filteredIssues} />
                         </div>
                     </TabsContent>
                 </Tabs>
@@ -354,7 +362,7 @@ const SprintBoard = ({ sprints, projectId, orgId }: Props) => {
             {currentSprint && currentSprint.status !== "COMPLETED" && (
                 <Button
                     onClick={() => {
-                        setSelectedStatus("TODO");
+                        setSelectedStatus(statuses[0]['id']);
                         setIsDrawerOpen(true);
                     }}
                     size="icon"

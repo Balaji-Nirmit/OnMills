@@ -4,7 +4,7 @@ import { formatDistanceToNow } from "date-fns";
 import IssueDetailsDialog from "./issue-details-dialog";
 import UserAvatar from "./user-avatar";
 import { useRouter } from "next/navigation";
-import { DetailedIssue, Priority } from "@/lib/types"; // Ensure Priority is exported from your types
+import { DetailedIssue, Priority, ProjectStatusType } from "@/lib/types"; // Ensure Priority is exported from your types
 
 // 1. Define the config with a specific Record type to satisfy indexing
 const priorityConfig: Record<Priority, { borderColor: string }> = {
@@ -20,13 +20,15 @@ interface IssueCardProps {
   showStatus?: boolean;
   onDelete?: () => void;
   onUpdate?: (updated: DetailedIssue) => void;
+  statuses: ProjectStatusType[];
 }
 
 export default function IssueCard({ 
   issue, 
   showStatus = false, 
   onDelete = () => { }, 
-  onUpdate = () => { } 
+  onUpdate = () => { } ,
+  statuses,
 }: IssueCardProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const router = useRouter();
@@ -53,7 +55,7 @@ export default function IssueCard({
           {showStatus && (
             <div className="mb-1">
               <span className="inline-block text-[9px] font-bold text-[#1D1D1F]/40 uppercase tracking-widest bg-black/5 px-2 py-0.5 rounded-md">
-                {issue.status}
+                {issue.status.name}
               </span>
             </div>
           )}
@@ -79,6 +81,7 @@ export default function IssueCard({
           isOpen={isDialogOpen} 
           onClose={() => setIsDialogOpen(false)} 
           issue={issue} 
+          statuses={statuses}
           onDelete={() => { router.refresh(); onDelete(); }} 
           onUpdate={(updated) => { router.refresh(); onUpdate(updated); }} 
         />

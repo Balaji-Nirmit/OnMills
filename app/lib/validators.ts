@@ -34,3 +34,8 @@ export const itemSchema = z.object({
   name: z.string().trim().min(3,"Item title must be at least 3 characters").toUpperCase(),
   reorderValue: z.number("Must be a number").gte(0,"Reorder value cannot be negative"),
 })
+
+export const statusSchema = z.object({
+  name: z.string().trim().min(3,"Item title must be at least 3 characters").toUpperCase(),
+  order: z.number("Must be a number").gte(3,"Order must be at least 3").lte(100,"Order cannot be more than 100"),
+})

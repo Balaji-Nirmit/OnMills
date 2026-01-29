@@ -1,1 +1,0 @@
-ALTER TABLE "itemTable" ADD COLUMN "reorder_value" integer DEFAULT 0 NOT NULL;

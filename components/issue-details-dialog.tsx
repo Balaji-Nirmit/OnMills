@@ -25,9 +25,8 @@ import { BarLoader } from "react-spinners";
 import { ExternalLink } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 
-import statuses from "@/data/status.json";
 import { deleteIssue, updateIssue } from "@/actions/issues";
-import { DetailedIssue, IssueType, UserType } from "@/lib/types";
+import { DetailedIssue, IssueType, ProjectStatusType, UserType } from "@/lib/types";
 import { getOrganizationUsers } from "@/actions/organization";
 import { Input } from "./ui/input";
 import { toast } from "sonner";
@@ -41,6 +40,7 @@ type Props = {
     onDelete?: () => void;
     onUpdate?: (updated: DetailedIssue) => void;
     borderCol?: string;
+    statuses: ProjectStatusType[];
 }
 
 export default function IssueDetailsDialog({
@@ -50,8 +50,10 @@ export default function IssueDetailsDialog({
     onDelete = () => { },
     onUpdate = () => { },
     borderCol = "",
+    statuses
 }: Props) {
-    const [status, setStatus] = useState(issue.status);
+    const [status, setStatus] = useState(issue.statusId);
+    const [statusName, setStatusName] = useState(issue.status.name)
     const [priority, setPriority] = useState(issue.priority);
     const [assigneeId, setAssigneeId] = useState(issue.assigneeId);
     const [quantity, setQuantity] = useState<number>(issue.quantity);
@@ -90,7 +92,7 @@ export default function IssueDetailsDialog({
 
     const handleSellConfirm = async () => {
         // According to your server logic, status 'SALES' triggers the sale/consumption
-        const saleStatus = 'SALES' as IssueType['status'];
+        const saleStatus = 'SALES'
         const newTrack = [...track, saleStatus];
         if(quantity > issue.quantity){
             toast.error("Insufficient quantity available in this batch.");
@@ -111,7 +113,7 @@ export default function IssueDetailsDialog({
         setIsSellDialogOpen(false);
     };
 
-    const handleStatusChange = async (newStatus: IssueType['status']) => {
+    const handleStatusChange = async (newStatus: IssueType['statusId']) => {
         setStatus(newStatus);
         const newTrack = [...track, newStatus];
         setTrack(newTrack);
@@ -140,9 +142,27 @@ export default function IssueDetailsDialog({
             onClose();
             onDelete();
         } else if (updated) {
-            onUpdate(updated);
+            // updated is likely IssueType (flat)
+            // We need to transform it back to DetailedIssue for the parent state
+            
+            // 1. Find the current status object from the prop
+            const currentStatusObject = statuses.find(s => s.id === updated.statusId);
+            
+            if (currentStatusObject) {
+                // 2. Reconstruct the DetailedIssue shape
+                const reconstructedIssue: DetailedIssue = {
+                    ...issue,        // Keep existing nested objects (item, reporter, project, etc.)
+                    ...updated,      // Overwrite with fresh data from server (statusId, priority, etc.)
+                    status: currentStatusObject // Explicitly set the status object TypeScript is looking for
+                };
+                
+                onUpdate(reconstructedIssue);
+            } else {
+                // Fallback if status isn't found (though it should be)
+                onUpdate(updated as unknown as DetailedIssue);
+            }
         }
-    }, [deleted, updated, deleteLoading, updateLoading]);
+    }, [deleted, updated, statuses]); // Add statuses to dependency array
 
     const canChange = membership?.role === "org:admin"
 
@@ -191,7 +211,7 @@ export default function IssueDetailsDialog({
                                     </SelectTrigger>
                                     <SelectContent>
                                         {statuses.map((option) => (
-                                            <SelectItem key={option.key} value={option.key}>
+                                            <SelectItem key={option.key} value={option.id}>
                                                 {option.name}
                                             </SelectItem>
                                         ))}
@@ -235,7 +255,7 @@ export default function IssueDetailsDialog({
                                 </div>
                             </div>
 
-                            {status === 'SALES' && (
+                            {statusName === 'SALES' && (
                                 <div>
                                     <label className="text-sm font-semibold text-gray-400 dark:text-gray-300 mb-2 block">
                                         Sell item and update

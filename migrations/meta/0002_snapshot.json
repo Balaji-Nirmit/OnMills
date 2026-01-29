@@ -1,6 +1,6 @@
 {
-  "id": "b7a396f5-64da-43e1-902d-aaf6799ac053",
-  "prevId": "23bf84d2-0cf6-48f3-ae5a-ec99b43621b1",
+  "id": "50e1c501-42c5-4402-b81c-d8caae4c9b5a",
+  "prevId": "0350c9e0-e384-4344-8ec5-bf7ee1305c05",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -29,8 +29,7 @@
         },
         "status": {
           "name": "status",
-          "type": "issue_status",
-          "typeSchema": "public",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
@@ -87,11 +86,10 @@
         },
         "track": {
           "name": "track",
-          "type": "issue_status[]",
-          "typeSchema": "public",
+          "type": "uuid[]",
           "primaryKey": false,
           "notNull": true,
-          "default": "'{\"TODO\"}'"
+          "default": "'{}'"
         },
         "quantity": {
           "name": "quantity",
@@ -178,6 +176,19 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "issues_status_projectStatusTable_id_fk": {
+          "name": "issues_status_projectStatusTable_id_fk",
+          "tableFrom": "issues",
+          "tableTo": "projectStatusTable",
+          "columnsFrom": [
+            "status"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
           "onUpdate": "no action"
         },
         "issues_assignee_id_userTable_id_fk": {
@@ -301,6 +312,81 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.projectStatusTable": {
+      "name": "projectStatusTable",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "order": {
+          "name": "order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "projectStatusTable_project_id_projectTable_id_fk": {
+          "name": "projectStatusTable_project_id_projectTable_id_fk",
+          "tableFrom": "projectStatusTable",
+          "tableTo": "projectTable",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "projectStatusTable_project_id_name_unique": {
+          "name": "projectStatusTable_project_id_name_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "project_id",
+            "name"
+          ]
+        },
+        "projectStatusTable_project_id_order_unique": {
+          "name": "projectStatusTable_project_id_order_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "project_id",
+            "order"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -535,21 +621,6 @@
         "MEDIUM",
         "HIGH",
         "URGENT"
-      ]
-    },
-    "public.issue_status": {
-      "name": "issue_status",
-      "schema": "public",
-      "values": [
-        "TODO",
-        "PURCHASE",
-        "STORE",
-        "BUFFING",
-        "PAINTING",
-        "WINDING",
-        "ASSEMBLY",
-        "PACKING",
-        "SALES"
       ]
     },
     "public.quantity_unit": {
