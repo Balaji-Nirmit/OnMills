@@ -125,18 +125,35 @@
   }
 }
 
+/* globals.css */
 html, 
 body {
-  /* Prevents the 'rubber-band' bouncing effect on all axes */
-  overscroll-behavior: none;
+  /* This prevents the page from jumping when the scrollbar appears/disappears */
+  scrollbar-gutter: stable;
   
-  /* Ensures your Glassmorphism background stays fixed 
-     and doesn't move during scroll attempts */
-  background-attachment: fixed;
-  overflow-x: hidden; /* Prevents accidental horizontal jitter */
+  /* Use 'contain' instead of 'none' to allow normal scrolling 
+     but prevent parent-chain bouncing */
+  overscroll-behavior-y: contain;
+  
+  overflow-x: hidden;
+  height: 100%;
 }
 
-/* specific scrollable containers infinite scroll lists */
+/* Custom Glassmorphism Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1); /* Subtle dark for light theme */
+  border-radius: 20px;
+  border: 3px solid #FAF9F6; /* Matches your bg-[#FAF9F6] */
+}
+
 .scrollable-container {
   overscroll-behavior: contain;
 }
